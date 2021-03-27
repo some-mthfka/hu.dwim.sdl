@@ -6,6 +6,7 @@
 
   :defsystem-depends-on (:cffi/c2ffi)
   :depends-on (:alexandria
+               :cl-ppcre
                :cffi
                :cffi/c2ffi
                :cffi-libffi)
@@ -25,6 +26,7 @@
                 :components ((:cffi/c2ffi-file "sdl.h"
                               :package #:hu.dwim.sdl.ffi
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
+                              :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :foreign-library-name "hu.dwim.sdl.ffi::libsdl2"
                               :foreign-library-spec ((:darwin (:or (:framework "SDL2") (:default "libSDL2")))
@@ -52,6 +54,7 @@
 
   :defsystem-depends-on (:cffi/c2ffi)
   :depends-on (:alexandria
+               :cl-ppcre
                :cffi
                :cffi/c2ffi
                :cffi-libffi
@@ -85,6 +88,7 @@
 
   :defsystem-depends-on (:cffi/c2ffi)
   :depends-on (:alexandria
+               :cl-ppcre
                :cffi
                :cffi/c2ffi
                :cffi-libffi
@@ -115,6 +119,7 @@
 
   :defsystem-depends-on (:cffi/c2ffi)
   :depends-on (:alexandria
+               :cl-ppcre
                :cffi
                :cffi/c2ffi
                :cffi-libffi

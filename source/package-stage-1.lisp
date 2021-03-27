@@ -1,7 +1,9 @@
 (uiop:define-package :hu.dwim.sdl
   (:use #:cl
         #:alexandria
-        #:cffi)
+        #:cffi
+        #:cl-ppcre)
+  (:import-from #:cl-ppcre #:regex-replace-all)
   (:export
    #:sdl-error
    ;; NOTE: it's not possible to re-export stuff from HU.DWIM.SDL.FFI by directly referencing the symbols,
