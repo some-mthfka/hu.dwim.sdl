@@ -20,6 +20,8 @@
    ;; (22:15:13) stassats: right before the Examples section it lists the order
    ))
 
-(uiop:define-package :hu.dwim.sdl.ffi
-  ;; We don't even want to :use COMMON-LISP here, to avoid any possible name clashes.
-  (:use))
+;; We don't even want to :use COMMON-LISP here, to avoid any possible name clashes.
+(uiop:define-package :cl-moar-sdl2.core (:use))
+(uiop:define-package :cl-moar-sdl2.gfx (:use))
+(uiop:define-package :cl-moar-sdl2.ttf (:use))
+(uiop:define-package :cl-moar-sdl2.image (:use))

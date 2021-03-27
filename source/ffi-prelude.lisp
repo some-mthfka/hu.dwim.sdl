@@ -22,22 +22,12 @@
          (error 'sdl-error/negative-return-code
                 :error-code return-code
                 :format-control "SDL call failed: ~S ~S"
-                :format-arguments (list return-code (hu.dwim.sdl.ffi::|SDL_GetError|)))
+                :format-arguments (list return-code (cl-moar-sdl2.core::sdl-get-error)))
          return-code)))
 
 (defun ffi-name-export-predicate (symbol &key &allow-other-keys)
   (declare (ignore symbol))
   t)
-
-;; (defmethod translate-name-from-foreign ((spec string)
-;;                                         (package (eql 'hu.dwim.sdl.ffi))
-;;                                         &optional varp)
-;;   (let ((name (translate-camelcase-name spec)))
-;;     (if varp (intern (format nil "*~a*" name)) name)))
-
-;; (string-downcase "SDL_WHY" :end 4)
-
-;; (substitute #\- #\_ "SDL_WHY")
 
 ;; (ffi-name-transformer "SDL_InitSubSystem" 'any)
 ;; (ffi-name-transformer "__u_char" 'any)
@@ -48,7 +38,6 @@
 ;; (ffi-name-transformer "BitsPerPixel" :field)
 ;; (ffi-name-transformer "Gshift" :field)
 
-;; ;; "str", "X2", "blendMode", "Vplane"
 ;; (ffi-name-transformer "X2" :argument)
 ;; (ffi-name-transformer "blendMode" :argument)
 ;; (ffi-name-transformer "Vplane" :argument)
@@ -56,8 +45,6 @@
 ;; (ffi-name-transformer "SDL_GetPlatform" :function)
 
 ;; (ffi-name-transformer "SDL_GL_UnbindTexture" :function)
-
-;; (sub "000" "cd" "abcd1cde") -> "ab0001000e"
 
 (defmacro spec-process (result-sym regexp &body body)
   ;; Need `again', because this needs to be recursive as multiple passes are
@@ -83,33 +70,32 @@ in the second expression, etc."
           rest))
 
 (defun caps-replace (result)
-  (spec-> result
-    (spec-process "_GL[a-z]" (print str) (regex-replace-all "_GL" str "_gl_"))
-    (spec-process "[^A-Z]GL[a-z]" (regex-replace-all "GL" str "_gl_"))
-    (spec-process "[^A-Z]GL[A-Z][a-z]" (regex-replace-all "GL" str "_gl"))
-    (spec-process "[^A-Z]WM[a-z]" (regex-replace-all "WM" str "wm_"))
-    (spec-process "[^A-Z]RW[a-z]" (regex-replace-all "RW" str "rw_"))
-    (spec-process "_GL|GL_" (string-downcase str))
-    (spec-process "_[A-Z][a-z]" (string-downcase str))
-    (spec-process "SDL_|IMG_|TTF_|GFX_" (string-downcase str))))
+  (spec->
+   result
+   (spec-process "_GL[a-z]" (print str) (regex-replace-all "_GL" str "_gl_"))
+   (spec-process "[^A-Z]GL[a-z]" (regex-replace-all "GL" str "_gl_"))
+   (spec-process "[^A-Z]GL[A-Z][a-z]" (regex-replace-all "GL" str "_gl"))
+   (spec-process "[^A-Z]WM[a-z]" (regex-replace-all "WM" str "wm_"))
+   (spec-process "[^A-Z]RW[a-z]" (regex-replace-all "RW" str "rw_"))
+   (spec-process "_GL|GL_" (string-downcase str))
+   (spec-process "_[A-Z][a-z]" (string-downcase str))
+   (spec-process "SDL_|IMG_|TTF_|GFX_" (string-downcase str))))
 
 ;; (caps-replace "SDL_GLprofile")
-;; (caps-replace "SDL_GL_UnbindGLTexture")
+;; (caps-replace "SDL_GL_UnbindGLTexture") ; FAKE, a made-up function
 ;; (caps-replace "SDL_RWops")
 
 (defun table-replace-p (name)
-  (second (find name '(("SDL_log" "SDL-LOG")
-                       ("SDL_Log" "SDL-LOG*"))
+  (second (find name '(("SDL_Log" "SDL-LOG")
+                       ("SDL_log" "SDL-LOG*")
+                       ("SDL_TRUE" "TRUE")
+                       ("SDL_FALSE" "FALSE"))
                 :key #'first
                 :test #'equal)))
 
 ;; (table-replace-p "SDL_Log")
 
-;; TODO
-;; ("SDL_TRUE" "TRUE")
-;; ("SDL_FALSE" "FALSE")
-
-(ffi-name-transformer "SDL_GLattr" :function)
+;; (ffi-name-transformer "SDL_GLattr" :function)
 
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
@@ -119,37 +105,37 @@ in the second expression, etc."
            (from-camel (name) (cffi/c2ffi:camelcase-to-dash-separated name))
            (muff (name char) (concatenate 'string char name char))
            (downcase (name) (string-downcase name))
-           (as-const (name) (_->- (muff (downcase name) "+")))
-           (as-global (name) (_->- (muff (downcase name) "*")))
-           (as-field (name) (_->- (from-camel name)))
-           (as-type (name) (_->- name)))
-    ;; There's no real need to downcase some the stuff here, but the generated
-    ;; code looks much better that way.
+           (as-const (name) (muff (downcase name) "+"))
+           (as-global (name) (muff (downcase name) "*"))
+           (as-field (name) (from-camel name))
+           (as-type (name) name)
+           (as-function (name) (from-camel (caps-replace name))))
     (cffi-sys:canonicalize-symbol-name-case
      (or
       (table-replace-p name)
-      (case kind
-        (:constant                      ; "_BITS_TYPES_H"
-         (as-const name))
-        (:member     ; member of an enum, aka "SDL_ASSERTION_ABORT", "SDL_FALSE"
-         (as-const name)) 
-        (:variable                      ; none found
-         (as-global name))
-        (:field      ; "__val", "BitsPerPixel", "Gshift", "num_texture_formats" 
-         (as-field name))
-        (:argument                      ; "str", "X2", "blendMode", "Vplane" 
-         (as-field name))
-        (:function                      ; "SDL_GetNumVideoDisplays"
-         (_->- (from-camel (caps-replace name))))
-        (:struct                        ; "SDL_HAPTICCONDITION"
-         (as-type name))
-        (:union                         ; "SDL_HAPTICEFFECT"
-         (as-type name))
-        (:enum                          ; none found (all are anonymous)
-         (as-type name))
-        (:type                          ; none passed to this function
-         (as-type name))
-        (otherwise name))))))
+      (_->-
+       (case kind
+         (:constant                     ; aka "_BITS_TYPES_H"
+          (as-const name))
+         (:member    ; member of an enum, aka "SDL_ASSERTION_ABORT", "SDL_FALSE"
+          (as-const name)) 
+         (:variable                     ; none found
+          (as-global name))
+         (:field     ; "__val", "BitsPerPixel", "Gshift", "num_texture_formats" 
+          (as-field name))
+         (:argument                     ; "str", "X2", "blendMode", "Vplane" 
+          (as-field name))
+         (:function                     ; "SDL_GetNumVideoDisplays"
+          (as-function name))
+         (:struct                       ; "SDL_HAPTICCONDITION"
+          (as-type name))
+         (:union                        ; "SDL_HAPTICEFFECT"
+          (as-type name))
+         (:enum                         ; none found (all are anonymous)
+          (as-type name))
+         (:type                         ; none passed to this function
+          (as-type name))
+         (otherwise name)))))))
 
 (defun ffi-type-transformer (type context &rest args &key &allow-other-keys)
   (let ((type (apply 'cffi/c2ffi:default-ffi-type-transformer type context args)))

@@ -17,4 +17,4 @@
           (incf count))))
     count))
 
-(import-all-owned-symbols :hu.dwim.sdl.ffi :hu.dwim.sdl)
+(import-all-owned-symbols :cl-moar-sdl2.core :hu.dwim.sdl)

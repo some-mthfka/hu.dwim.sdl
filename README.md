@@ -1,5 +1,28 @@
 # hu.dwim.sdl
 
+## Fork
+
+This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These are the changes:
+
+- `hu.dwim.sdl.ffi`, where all the bindings lived, was replaced by several packages, one for each SDL2 library:
+  - `cl-moar-sdl2.core` (bindings for SDL2),
+  - `cl-moar-sdl2.gfx` (bindings for SDL2_gfx),
+  - `cl-moar-sdl2.ttf` (bindings for SDL2_ttf),
+  - `cl-moar-sdl2.image` (bindings for SDL_image).
+- Everything is now exported in the generated files (used to be nothing).
+- The generated names are lispy now. Instead of `|SDL_Init|` you now simply write `sdl-init`.  See `ffi-name-transformer` in [](source/ffi_prelude.lisp) for details, but basically: 
+  - all underscores are replaced with dashes; 
+  - camel case is converted to dashes; 
+  - `WM`, `GL`, `RW` are treated nicely; 
+  - all constants and enum members are muffed with pluses, e.g. `+have-pow+`.
+  - and these table substitutions take place: 
+    - `SDL_Log` -> `SDL-LOG`
+    - `SDL_log` -> `SDL-LOG*`
+    - `SDL_TRUE` -> `TRUE`
+    - `SDL_FALSE` -> `FALSE`.
+
+It shouldn't be too problematic to add support for `sdl2_mixer` or `sdl2_net`, but I didn't bother with the specs.
+
 ## What
 
 It's a Common Lisp [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface)
