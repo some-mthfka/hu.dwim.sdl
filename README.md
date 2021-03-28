@@ -14,7 +14,7 @@ This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These a
   - all underscores are replaced with dashes; 
   - camel case is converted to dashes; 
   - Abbreviations are treated nicely (such as `GL`, `GUID`, `RGBA` etc.);
-  - all constants and enum members are muffed with pluses, e.g. `+have-pow+`.
+  - all constants and enum members are braced with pluses, e.g. `+have-pow+`;
   - and these table substitutions take place: 
     - `SDL_Log` -> `SDL-LOG`
     - `SDL_log` -> `SDL-LOG*`
