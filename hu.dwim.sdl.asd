@@ -6,6 +6,7 @@
 
   :defsystem-depends-on (:cffi/c2ffi)
   :depends-on (:alexandria
+               :parachute ; tests
                :cl-ppcre
                :cffi
                :cffi/c2ffi

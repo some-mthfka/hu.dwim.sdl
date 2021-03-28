@@ -9,11 +9,11 @@ This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These a
   - `cl-moar-sdl2.gfx` (bindings for SDL2_gfx),
   - `cl-moar-sdl2.ttf` (bindings for SDL2_ttf),
   - `cl-moar-sdl2.image` (bindings for SDL_image).
-- Everything is now exported in the generated files (used to be nothing).
+- Everything is now exported in the generated files (used to be nothing). Argument names probably don't have to be, but it's a bit problematic (see `ffi-name-export-predicate` in [](source/ffi_prelude.lisp)).
 - The generated names are lispy now. Instead of `|SDL_Init|` you now simply write `sdl-init`.  See `ffi-name-transformer` in [](source/ffi_prelude.lisp) for details, but basically: 
   - all underscores are replaced with dashes; 
   - camel case is converted to dashes; 
-  - `WM`, `GL`, `RW` are treated nicely; 
+  - `WM`, `GL`, `RW`, `ID`, `GUID`, `UNICODE`, `UTF8` are treated nicely; 
   - all constants and enum members are muffed with pluses, e.g. `+have-pow+`.
   - and these table substitutions take place: 
     - `SDL_Log` -> `SDL-LOG`
