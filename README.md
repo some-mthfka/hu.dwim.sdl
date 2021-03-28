@@ -13,7 +13,7 @@ This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These a
 - The generated names are lispy now. Instead of `|SDL_Init|` you now simply write `sdl-init`.  See `ffi-name-transformer` in [](source/ffi_prelude.lisp) for details, but basically: 
   - all underscores are replaced with dashes; 
   - camel case is converted to dashes; 
-  - `WM`, `GL`, `RW`, `ID`, `GUID`, `UNICODE`, `UTF8` are treated nicely; 
+  - Abbreviations are treated nicely (such as `GL`, `GUID`, `RGBA` etc.);
   - all constants and enum members are muffed with pluses, e.g. `+have-pow+`.
   - and these table substitutions take place: 
     - `SDL_Log` -> `SDL-LOG`

@@ -44,54 +44,51 @@
                  :test #'eql)))
   t)
 
-(defmacro spec-process (result-sym regexp &body body)
-  ;; Need `again', because this needs to be recursive as multiple passes are
-  ;; required (regexps can conflict, aka SDL_GL will be sdl_GL on the first pass).
-  `(labels ((again (result &optional (matched t))
-              (if matched
-                  (multiple-value-call #'again
-                    (regex-replace-all
-                     ,regexp result
-                     (lambda (target-string start end match-start match-end reg-starts reg-ends)
-                       (declare (ignorable start end reg-starts reg-ends))
-                       (let ((str (subseq target-string match-start match-end)))
-                         (declare (ignorable str))
-                         ,@body))))
-                  result)))
-     (again ,result-sym)))
-
-(defmacro spec-> (&rest rest)
-  "Nest things, so that the first expression is embedded as the second argument
-in the second expression, etc."
-  (reduce (lambda (acc x)
-            `(,(first x) ,acc ,@(rest x)))
-          rest))
-
 (defun concat (&rest rest)
   (apply #'concatenate 'string rest))
 
-(defun process-abbrev (abbrev)
-  `((spec-process ,(concat "[^_^]" abbrev "$")
-        (regex-replace-all ,abbrev str ,(concat "_" (string-downcase abbrev))))
-    (spec-process ,(concat "_" abbrev "[a-z]")
-        (regex-replace-all ,abbrev str ,(concat (string-downcase abbrev) "_")))
-    (spec-process ,(concat "[^A-Z]" abbrev "[a-z]")
-        (regex-replace-all ,abbrev str ,(concat "_" (string-downcase abbrev) "_")))
-    (spec-process ,(concat "[^A-Z]" abbrev "[A-Z][a-z]")
-        (regex-replace-all ,abbrev str ,(concat "_" (string-downcase abbrev))))
-    (spec-process ,(concat "(^|_)" abbrev "(_|$)") (string-downcase str))))
+(defmacro rx-lambda (&body body)
+  `(lambda (target-string start end match-start match-end reg-starts reg-ends)
+     (declare (ignorable start end reg-starts reg-ends))
+     (let ((str (subseq target-string match-start match-end)))
+       (declare (ignorable str))
+       ,@body)))
 
-(defun caps-replace (result)
-  (eval
-   `(spec->
-     ,result
-     ;; note: have to process GUID before ID 
-     ,@(append (mappend #'process-abbrev
-                        (list "UNICODE" "UTF8" "GUID" "ID" "GL" "WM" "RW")))
-     (spec-process "[^A-Z](GUID|RW|WM|GL|ID)$"
-         (concat (subseq str 0 1) (concat "_" (string-downcase (subseq str 1)))))
-     (spec-process "_[A-Z][a-z]" (string-downcase str))
-     (spec-process "SDL_|IMG_|TTF_|GFX_" (string-downcase str)))))
+(defparameter *abbrevs*
+  ;; order matters, e.g. RGBA needs to run before RGB, so just sort by length
+  (sort (list "SDL" "SDL2" "IMG" "TTF" "GFX"
+              "TLS" "CAS" "CVT"
+              "UNICODE" "UTF8"
+              "3D" "CPU" "MMX" "RAM" "AVX" "RLE" "RDTSC"
+              "(L|B)E[0-9][0-9]" "SSE[0-9]*"
+              "RGBA" "RGB" "YUV"
+              "GUID" "ID" "GL" "WM" "RW" "XY" "FP"
+              "WAV"
+              "ICO" "CUR" "BMP" "GIF" "JPG" "LBM" "PCX" "PNG" "PNM" "TIF"
+              "XPM" "XCF" "XV" "WEBP" "TGA")
+        #'>
+        :key #'length))
+
+(defun frame-abbrev (target-string start end match-start match-end reg-starts reg-ends)
+  (declare (ignore reg-starts reg-ends))
+  (labels ((legit (pos) (<= start pos (1- end)))
+           (thereis (rx pos)
+             (when (legit pos) 
+               (cl-ppcre:scan rx target-string :start pos :end (1+ pos))))
+           (cap-p (pos) (thereis "[A-Z]" pos))
+           (und-p (pos) (thereis "_" pos))
+           (insert-p (pos) (and (legit pos)
+                                (not (cap-p pos))
+                                (not (und-p pos)))))
+    (concat (when (insert-p (1- match-start)) "_")
+            (string-downcase (subseq target-string match-start match-end))
+            (when (insert-p match-end) "_"))))
+
+(macrolet ((nreplace (rx-sym replacement)
+             `(setf input (regex-replace-all ,rx-sym input ,replacement))))
+  (defun caps-replace (input)
+    (loop for abbrev in *abbrevs* do (nreplace abbrev #'frame-abbrev))
+    (nreplace "_[A-Z][a-z]" (rx-lambda (string-downcase str)))))
 
 (defun table-replace-p (name)
   (second (find name '(("SDL_Log" "SDL-LOG")
@@ -100,6 +97,19 @@ in the second expression, etc."
                        ("SDL_FALSE" "FALSE"))
                 :key #'first
                 :test #'equal)))
+
+(defparameter *questionable-names* nil
+  "If you generate names for other sdl module, make sure to check this variable
+after running, it makes it easy to catch off the abbreviations.  Make sure it's
+always NIL, or add exceptions to `catch-questionable-names' if approprate.  Note
+that there's no automatic reset mechanism, so make sure to reevaluate this
+expression when generating again.")
+
+(defun catch-questionable-names (name)
+  (when (and (cl-ppcre:scan "-.-" name)
+             (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name)))
+    (push name *questionable-names*))
+  name)
 
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
@@ -114,60 +124,66 @@ in the second expression, etc."
              (as-field (name) (from-camel name))
              (as-type (name) name)
              (as-function (name) (from-camel (caps-replace name))))
-      (cffi-sys:canonicalize-symbol-name-case
-       (or
-        (table-replace-p name)
-        (_->-
-         (case kind
-           (:constant                   ; aka "_BITS_TYPES_H"
-            (as-const name*))
-           (:member  ; member of an enum, aka "SDL_ASSERTION_ABORT", "SDL_FALSE"
-            (as-const name*)) 
-           (:variable                   ; none found
-            (as-global name*))
-           (:field   ; "__val", "BitsPerPixel", "Gshift", "num_texture_formats" 
-            (as-field name*))
-           (:argument                   ; "str", "X2", "blendMode", "Vplane" 
-            (as-field name*))
-           (:function                   ; "SDL_GetNumVideoDisplays"
-            (as-function name*))
-           (:struct                     ; "SDL_HAPTICCONDITION"
-            (as-type name*))
-           (:union                      ; "SDL_HAPTICEFFECT"
-            (as-type name*))
-           (:enum                       ; none found (all are anonymous)
-            (as-type name*))
-           (:type                       ; none passed to this function
-            (as-type name*))
-           (otherwise name))))))))
+      (catch-questionable-names
+       (cffi-sys:canonicalize-symbol-name-case
+        (or
+         (table-replace-p name)
+         (_->-
+          (case kind
+            (:constant                  ; aka "_BITS_TYPES_H"
+             (as-const name*))
+            (:member ; member of an enum, aka "SDL_ASSERTION_ABORT", "SDL_FALSE"
+             (as-const name*)) 
+            (:variable                  ; none found
+             (as-global name*))
+            (:field  ; "__val", "BitsPerPixel", "Gshift", "num_texture_formats" 
+             (as-field name*))
+            (:argument                  ; "str", "X2", "blendMode", "Vplane" 
+             (as-field name*))
+            (:function                  ; "SDL_GetNumVideoDisplays"
+             (as-function name*))
+            (:struct                    ; "SDL_HAPTICCONDITION"
+             (as-type name*))
+            (:union                     ; "SDL_HAPTICEFFECT"
+             (as-type name*))
+            (:enum                      ; none found (all are anonymous)
+             (as-type name*))
+            (:type                      ; none passed to this function
+             (as-type name*))
+            (otherwise name)))))))))
+
+(defmacro check (kind input expected)
+  `(parachute:is equal ,expected (ffi-name-transformer ,input ,kind)))
 
 (parachute:define-test+run various-transforms
-  (loop for (kind input expected) in
-        '((:function "SDL_InitSubSystem" "SDL-INIT-SUB-SYSTEM")
-          (:field "__u_char" "--U-CHAR")
-          (:constant "SDL_HAPTIC_INFINITY" "+SDL-HAPTIC-INFINITY+")
-          (:field "num_texture_formats" "NUM-TEXTURE-FORMATS")
-          (:field "__val" "--VAL")
-          (:field "BitsPerPixel" "BITS-PER-PIXEL")
-          (:argument "X2" "X2")
-          (:argument "blendMode" "BLEND-MODE")
-          (:argument "Vplane" "VPLANE"))
-        do (parachute:is equal expected (ffi-name-transformer input kind))))
+  (check :function "SDL_InitSubSystem" "SDL-INIT-SUB-SYSTEM")
+  (check :field "__u_char" "--U-CHAR")
+  (check :constant "SDL_HAPTIC_INFINITY" "+SDL-HAPTIC-INFINITY+")
+  (check :field "num_texture_formats" "NUM-TEXTURE-FORMATS")
+  (check :field "__val" "--VAL")
+  (check :field "BitsPerPixel" "BITS-PER-PIXEL")
+  (check :argument "X2" "X2")
+  (check :argument "blendMode" "BLEND-MODE")
+  (check :argument "Vplane" "VPLANE"))
 
 (parachute:define-test+run name-caps
-  (loop for (kind input expected) in
-        '((:type "SDL_GLprofile" "SDL-GL-PROFILE")
-          (:function "SDL_GL_UnbindGLTexture" "SDL-GL-UNBIND-GL-TEXTURE") ; FAKE, a made-up function
-          (:struct "SDL_RWops" "SDL-RW-OPS")
-          (:function "SDL_GetWindowID" "SDL-GET-WINDOW-ID")
-          (:function "SDL_JoystickGetGUIDFromString" "SDL-JOYSTICK-GET-GUID-FROM-STRING")
-          (:function "SDL_JoystickGetDeviceGUID" "SDL-JOYSTICK-GET-DEVICE-GUID")
-          (:function "SDL_JoystickGetGUIDString" "SDL-JOYSTICK-GET-GUID-STRING")
-          (:field "GUID" "GUID")
-          (:function "TTF_SizeUNICODE" "TTF-SIZE-UNICODE")
-          (:function "TTF_SizeUTF8" "TTF-SIZE-UTF8")
-          (:function "SDL_GLattr" "SDL-GL-ATTR"))
-        do (parachute:is equal expected (ffi-name-transformer input kind))))
+  (check :type "SDL_GLprofile" "SDL-GL-PROFILE")
+  (check :function "SDL_GL_UnbindGLTexture" "SDL-GL-UNBIND-GL-TEXTURE") ; FAKE, a made-up function
+  (check :struct "SDL_RWops" "SDL-RW-OPS")
+  (check :function "SDL_GetWindowID" "SDL-GET-WINDOW-ID")
+  (check :function "SDL_JoystickGetGUIDFromString" "SDL-JOYSTICK-GET-GUID-FROM-STRING")
+  (check :function "SDL_JoystickGetDeviceGUID" "SDL-JOYSTICK-GET-DEVICE-GUID")
+  (check :function "SDL_JoystickGetGUIDString" "SDL-JOYSTICK-GET-GUID-STRING")
+  (check :field "GUID" "GUID")
+  (check :function "TTF_SizeUNICODE" "TTF-SIZE-UNICODE")
+  (check :function "TTF_SizeUTF8" "TTF-SIZE-UTF8")
+  (check :function "SDL_GLattr" "SDL-GL-ATTR")
+  (check :function "rotozoomSurfaceXY" "ROTOZOOM-SURFACE-XY")
+  (check :function "SDL_imageFilterMMXdetect" "SDL-IMAGE-FILTER-MMX-DETECT")
+  (check :function "SDL_WriteBE64" "SDL-WRITE-BE64")
+  (check :function "SDL_WriteLE16" "SDL-WRITE-LE16")
+  (check :function "SDL_HasSSE41" "SDL-HAS-SSE41")
+  (check :function "SDL_GetRGBA" "SDL-GET-RGBA"))
 
 (defun ffi-type-transformer (type context &rest args &key &allow-other-keys)
   (let ((type (apply 'cffi/c2ffi:default-ffi-type-transformer type context args)))
