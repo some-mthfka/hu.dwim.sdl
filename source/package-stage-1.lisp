@@ -21,7 +21,7 @@
    ))
 
 ;; We don't even want to :use COMMON-LISP here, to avoid any possible name clashes.
-(uiop:define-package :cl-moar-sdl2.core (:use))
-(uiop:define-package :cl-moar-sdl2.gfx (:use))
-(uiop:define-package :cl-moar-sdl2.ttf (:use))
-(uiop:define-package :cl-moar-sdl2.image (:use))
+(uiop:define-package :hu.dwim.sdl/core (:use))
+(uiop:define-package :hu.dwim.sdl/gfx (:use))
+(uiop:define-package :hu.dwim.sdl/ttf (:use))
+(uiop:define-package :hu.dwim.sdl/image (:use))

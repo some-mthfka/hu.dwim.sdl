@@ -25,11 +25,11 @@
                (:module "c2ffi-spec"
                 :depends-on ("ffi-prelude")
                 :components ((:cffi/c2ffi-file "sdl.h"
-                              :package #:cl-moar-sdl2.core
+                              :package #:hu.dwim.sdl/core
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
-                              :foreign-library-name "cl-moar-sdl2.core::libsdl2"
+                              :foreign-library-name "hu.dwim.sdl/core::libsdl2"
                               :foreign-library-spec ((:darwin (:or (:framework "SDL2") (:default "libSDL2")))
                                                      (:unix (:or "libSDL2-2.0.so.0" "libSDL2"))
                                                      (:windows "SDL2.dll")
@@ -66,11 +66,11 @@
                :hu.dwim.sdl)
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-gfx.h"
-                              :package #:cl-moar-sdl2.gfx
+                              :package #:hu.dwim.sdl/gfx
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
-                              :foreign-library-name "cl-moar-sdl2.core::libsdl2/gfx"
+                              :foreign-library-name "hu.dwim.sdl/core::libsdl2/gfx"
                               :foreign-library-spec ((:darwin (:or (:framework "SDL2_gfx") (:default "libSDL2_gfx")))
                                                      (:unix (:or "libSDL2_gfx-1.0.so.0" "libSDL2_gfx"))
                                                      (:windows "SDL2_gfx.dll")
@@ -101,11 +101,11 @@
                :hu.dwim.sdl)
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-ttf.h"
-                              :package #:cl-moar-sdl2.ttf
+                              :package #:hu.dwim.sdl/ttf
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
-                              :foreign-library-name "cl-moar-sdl2.core::libsdl2/ttf"
+                              :foreign-library-name "hu.dwim.sdl/core::libsdl2/ttf"
                               :foreign-library-spec ((:darwin (:or (:framework "SDL2_ttf") (:default "libSDL2_ttf")))
                                                      (:unix (:or "libSDL2_ttf-2.0.so.0" "libSDL2_ttf"))
                                                      (:windows "SDL2_ttf.dll")
@@ -133,11 +133,11 @@
                :hu.dwim.sdl)
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-image.h"
-                              :package #:cl-moar-sdl2.image
+                              :package #:hu.dwim.sdl/image
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
-                              :foreign-library-name "cl-moar-sdl2.core::libsdl2/image"
+                              :foreign-library-name "hu.dwim.sdl/core::libsdl2/image"
                               :foreign-library-spec ((:darwin (:or (:framework "SDL2_image") (:default "libSDL2_image")))
                                                      (:unix (:or "libSDL2_image-2.0.so.0" "libSDL2_image"))
                                                      (:windows "SDL2_image.dll")

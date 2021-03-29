@@ -9,7 +9,7 @@
                 c-fun/rc)
   (:local-nicknames
    (#:sdl :hu.dwim.sdl)
-   (#:sdl.ffi :cl-moar-sdl2.core))
+   (#:sdl.ffi :hu.dwim.sdl/core))
   ;; To use C-c C-c in slime: (asdf:load-systems :hu.dwim.def+swank :hu.dwim.sdl/fancy)
   (:readtable-setup
    (hu.dwim.syntax-sugar:enable-sharp-boolean-syntax)

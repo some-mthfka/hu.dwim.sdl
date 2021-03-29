@@ -22,26 +22,16 @@
          (error 'sdl-error/negative-return-code
                 :error-code return-code
                 :format-control "SDL call failed: ~S ~S"
-                :format-arguments (list return-code (cl-moar-sdl2.core::sdl-get-error)))
+                :format-arguments (list return-code (hu.dwim.sdl/core::sdl-get-error)))
          return-code)))
+
+(defparameter *ok-to-export* nil
+  "Nothing like `kind' is passed to `ffi-name-export-predicate', so manually
+track the stuff we actually want to export in `ffi-name-transformer'.")
 
 (defun ffi-name-export-predicate (symbol &key &allow-other-keys)
   (declare (ignore symbol))
-  ;; cffi/c2ffi seems to be nothing like `kind' here...  but could be reasonable
-  ;; to skip the argument names.  although who knows, maybe they can be named as
-  ;; other things, so can't simply check for membership in +ARGUMENT-NAMES+.
-  #+nil                  ; nah, members (enum consts) wouldn't be exported then.
-  (let ((*package* (find-package :cl-moar-sdl2.core)))
-    (not (member symbol (append +FIELD-NAMES+
-                                ;;+ARGUMENT-NAMES+
-                                +CONSTANT-NAMES+
-                                +TYPE-NAMES+
-                                +VARIABLE-NAMES+
-                                +UNION-NAMES+
-                                +STRUCT-NAMES+
-                                +FUNCTION-NAMES+)
-                 :key #'cdr
-                 :test #'eql)))
+  ;; cffi/c2ffi seems to be nothing like `kind' here...  
   t)
 
 (defun concat (&rest rest)
@@ -99,10 +89,10 @@
                 :test #'equal)))
 
 (defparameter *questionable-names* nil
-  "If you generate names for other sdl module, make sure to check this variable
+  "If you generate names for other sdl modules, make sure to check this variable
 after running, it makes it easy to catch off the abbreviations.  Make sure it's
 always NIL, or add exceptions to `catch-questionable-names' if approprate.  Note
-that there's no automatic reset mechanism, so make sure to reevaluate this
+that there's no automatic reset mechanism, so don't forget to reevaluate this
 expression when generating again.")
 
 (defun catch-questionable-names (name)
