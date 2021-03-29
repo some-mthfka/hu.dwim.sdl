@@ -25,13 +25,9 @@
                 :format-arguments (list return-code (hu.dwim.sdl/core::sdl-get-error)))
          return-code)))
 
-(defparameter *ok-to-export* nil
-  "Nothing like `kind' is passed to `ffi-name-export-predicate', so manually
-track the stuff we actually want to export in `ffi-name-transformer'.")
-
 (defun ffi-name-export-predicate (symbol &key &allow-other-keys)
   (declare (ignore symbol))
-  ;; cffi/c2ffi seems to be nothing like `kind' here...  
+  ;; cffi/c2ffi seems to be nothing like `kind' here...
   t)
 
 (defun concat (&rest rest)
@@ -158,7 +154,7 @@ expression when generating again.")
 
 (parachute:define-test+run name-caps
   (check :type "SDL_GLprofile" "SDL-GL-PROFILE")
-  (check :function "SDL_GL_UnbindGLTexture" "SDL-GL-UNBIND-GL-TEXTURE") ; FAKE, a made-up function
+  (check :function "SDL_GL_UnbindGLTexture" "SDL-GL-UNBIND-GL-TEXTURE") ; a FAKE made-up function
   (check :struct "SDL_RWops" "SDL-RW-OPS")
   (check :function "SDL_GetWindowID" "SDL-GET-WINDOW-ID")
   (check :function "SDL_JoystickGetGUIDFromString" "SDL-JOYSTICK-GET-GUID-FROM-STRING")
