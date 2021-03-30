@@ -13,9 +13,12 @@
                :cffi-libffi)
   :components ((:file "package-stage-1"
                 :pathname "source/package-stage-1")
+               (:file "type-conversion-lists"
+                :pathname "source/type-conversion-lists"
+                :depends-on ("package-stage-1"))
                (:file "ffi-prelude"
                 :pathname "source/ffi-prelude"
-                :depends-on ("package-stage-1"))
+                :depends-on ("type-conversion-lists"))
                (:module "source"
                 :depends-on ("c2ffi-spec" "package-stage-1")
                 :serial t
