@@ -1,9 +1,29 @@
 ;;; This file is loaded before the generated FFI.
 
+;; TODO export all error conditions
+
 (in-package :hu.dwim.sdl)
+
+;; * sdl errors
 
 (define-condition sdl-error (error)
   ())
+
+(defun get+clear-sdl-error ()
+  "Some functions like sdl-get-window-from-id won't set sdl error message, so
+you will see the previous one: so make sure to keep everything cleaned."
+  (let ((err (hu.dwim.sdl/core::sdl-get-error)))
+    (if (emptyp err)
+        "/SDL_GetError contained no error message./"
+        (prog1 (princ-to-string err)
+          (hu.dwim.sdl/core:sdl-clear-error)))))
+
+;; ** negative return code error
+
+;; To test this, try:
+#+nil
+(hu.dwim.sdl/core:sdl-get-window-from-id 43434)
+;; to see: SDL call failed: "/SDL_GetError contained no error message./"
 
 (define-condition sdl-error/negative-return-code (simple-error sdl-error)
   ((error-code :initform (error "Must specify ERROR-CODE.")
@@ -22,13 +42,75 @@
          (error 'sdl-error/negative-return-code
                 :error-code return-code
                 :format-control "SDL call failed: ~S ~S"
-                :format-arguments (list return-code (hu.dwim.sdl/core::sdl-get-error)))
+                :format-arguments (list return-code (get+clear-sdl-error)))
          return-code)))
+
+;; ** null pointer returned
+
+;; For an easy test of this, call:
+#+nil
+(hu.dwim.sdl/core:sdl-haptic-open-from-mouse)
+;; to see: SDL call failed: "Haptic: Mouse isn't a haptic device."
+
+;; OK, the approach like with the negative return code won't exactly work here,
+;; as functions return different types of pointers.  So, let's define wrappers
+;; for all those types (and make them inherit from one null-checked type).
+
+(define-condition sdl-error/null-returned (simple-error sdl-error)
+  ((type-info :initform (error "Must specify TYPE-INFO.")
+              :accessor type-info-of
+              :initarg :type-info)))
+
+(cffi:define-foreign-type sdl-null-checked-type (cffi::foreign-type-alias)
+  ()
+  (:simple-parser sdl-null-checked-type))
+
+(defmethod cffi:expand-from-foreign (value (type sdl-null-checked-type))
+  ;; NOTE: strictly speaking it should be (cffi:convert-from-foreign ,value :int), but not in this case.
+  `(let ((return-value ,value))
+     (when (cffi:null-pointer-p return-value)
+       (error 'sdl-error/null-returned
+              :type-info ',(class-name (class-of type))
+              :format-control "SDL call failed: ~S"
+              :format-arguments (list (get+clear-sdl-error))))
+     return-value))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun get-null-checked-type-name (type-specifier)
+    (symbolicate 'sdl-null-checked-type/
+                 (if (symbolp type-specifier)
+                     type-specifier
+                     (progn (assert (eql :pointer (first type-specifier)))
+                            (assert (eql (length type-specifier) 2))
+                            (symbolicate (second type-specifier) '*))))))
+
+;; OK, I know this sucks, but trying to `eval'uate `define-foreign-type' form in
+;; the `ffi-type-transformer' proved to be a real time waster with trying to
+;; make symbols and definitions be in the right packages and I was getting
+;; unknown CFFI type errors.  Easier to mainain this little list right here.
+(dolist (type-specifier
+         (append '(hu.dwim.sdl/core::sdl-glcontext)
+                 (mapcar
+                  (lambda (x) (list :pointer (ensure-symbol x 'hu.dwim.sdl/core)))
+                  '(sdl-sem sdl-mutex sdl-surface sdl-palette sdl-pixelformat
+                    sdl-audiospec sdl-rw-ops sdl-cond sdl-renderer sdl-haptic
+                    sdl-joystick sdl-cursor sdl-glcontex sdl-surface sdl-window
+                    sdl-thread sdl-displaymode sdl-glcontext sdl-gamecontroller
+                    sdl-texture))))
+  (let ((ft (get-null-checked-type-name type-specifier)))
+    (eval `(cffi:define-foreign-type ,ft (sdl-null-checked-type)
+             ()
+             (:default-initargs :actual-type (cffi::parse-type ',type-specifier))
+             (:simple-parser ,ft)))))
+
+;; * Export
 
 (defun ffi-name-export-predicate (symbol &key &allow-other-keys)
   (declare (ignore symbol))
   ;; cffi/c2ffi seems to be nothing like `kind' here...
   t)
+
+;; * Name Conversion
 
 (defun concat (&rest rest)
   (apply #'concatenate 'string rest))
@@ -138,6 +220,8 @@ expression when generating again.")
              (as-type name*))
             (otherwise name)))))))))
 
+;; ** Name conversion tests
+
 (defmacro check (kind input expected)
   `(parachute:is equal ,expected (ffi-name-transformer ,input ,kind)))
 
@@ -171,44 +255,269 @@ expression when generating again.")
   (check :function "SDL_HasSSE41" "SDL-HAS-SSE41")
   (check :function "SDL_GetRGBA" "SDL-GET-RGBA"))
 
-(defun ffi-type-transformer (type context &rest args &key &allow-other-keys)
-  (let ((type (apply 'cffi/c2ffi:default-ffi-type-transformer type context args)))
-    (cond
-      ((and (consp context)
-            (eq (first context) :function)
-            (eq (third context) :return-type)
-            (member (second context)
-                    ;; TODO this list is by far not complete. see this SDL bug for details:
-                    ;; https://bugzilla.libsdl.org/show_bug.cgi?id=3219
-                    '("SDL_Init"
-                      "TTF_Init"
-                      "IMG_Init"
-                      "SDL_SetRenderDrawColor"
-                      "SDL_RenderClear"
-                      "SDL_RenderCopyEx"
-                      "SDL_RenderCopyEx"
-                      "SDL_RenderDrawLines"
-                      "SDL_RenderDrawLines"
-                      "SDL_RenderDrawPoint"
-                      "SDL_RenderDrawPoints"
-                      "SDL_RenderDrawRect"
-                      "SDL_RenderDrawRects"
-                      "SDL_RenderFillRect"
-                      "SDL_RenderFillRects"
-                      "SDL_RenderReadPixels"
-                      "SDL_RenderSetClipRect"
-                      "SDL_RenderSetLogicalSize"
-                      "SDL_RenderSetScale"
-                      "SDL_RenderSetViewport"
-                      )
-                    :test 'equal))
-       (assert (eq type :int))
-       ;; this is a cffi type that automatically signals an error if the return code is negative.
-       'sdl-error-code)
-      #+nil
-      ((equal context '(:struct "hci_dev_info" "name"))
-       (assert (equal type '(:array :char 8)))
-       ;; err, no, this dereferences a pointer
-       :string)
-      (t
-       type))))
+;; * Type conversion
+
+;; ** Commentary
+
+;; [DK] I used SDL wiki search to identify various error return possibilities.
+;; See https://wiki.libsdl.org/SGFunctions for some format details.
+;; These aren't religiously followed by them, though.
+;; And here's the search page: https://wiki.libsdl.org/FindPage
+;; I brace each query in slashes.
+
+;; There's gotta be an easier way than just copying page results and running an
+;; emacs macro on them.  Because this is like _super_ *lame*, dude.
+
+;; ttf docs here:
+;; http://sdl.beuc.net/sdl.wiki/SDL_ttf
+;; gfx docs here:
+;; https://www.ferzkopp.net/Software/SDL2_gfx/Docs/html/index.html
+
+;; Query: /"Returns SDL_TRUE on success, SDL_FALSE on error."/
+;; Date queried: 30 March 2021. 2 results.
+;; SDL_Vulkan_GetInstanceExtensions
+;; SDL_Vulkan_CreateSurface
+
+;; ** Lists
+
+;; *** Negative Return Code
+
+(defparameter *negative-return-code-conversion-list*
+  ;; TODO this list is by far not complete. see this SDL bug for details:
+  ;; https://bugzilla.libsdl.org/show_bug.cgi?id=3219
+  ;; See the docstring for info.
+  '("TTF_Init"
+    "IMG_Init"
+    ;; SDL Core
+    ;; [DK] One could say that the list below is probably still incomplete, but
+    ;; I guess someone will have to find out the hard way.
+    ;; Query: /regex:"Returns 0 on success".*SDL_GetError/
+    ;; Date queried: 30 March 2021. 121 results.
+    ;; Exceptions:
+    "SDL_GL_UnbindTexture"              ; wiki forgot to mention SDL_GetError
+    ;; Results:
+    "SDL_CreateWindowAndRenderer"
+    "SDL_VideoInit"
+    "SDL_GL_SetAttribute"
+    "SDL_SaveBMP"
+    "SDL_RWclose"
+    "SDL_Init"
+    "SDL_GetDisplayMode"
+    "SDL_GetDisplayBounds"
+    "SDL_GetDesktopDisplayMode"
+    "SDL_GetCurrentDisplayMode"
+    "SDL_iPhoneSetAnimationCallback"
+    "SDL_WinRTRunApp"
+    "SDL_WarpMouseGlobal"
+    "SDL_Vulkan_LoadLibrary"
+    "SDL_UpdateYUVTexture"
+    "SDL_UpdateWindowSurfaceRects"
+    "SDL_UpdateWindowSurface"
+    "SDL_UpdateTexture"
+    "SDL_UnlockMutex"
+    "SDL_TLSSet"
+    "SDL_ShowSimpleMessageBox"
+    "SDL_ShowMessageBox"
+    "SDL_SetWindowOpacity"
+    "SDL_SetWindowModalFor"
+    "SDL_SetWindowInputFocus"
+    "SDL_SetWindowHitTest"
+    "SDL_SetWindowGammaRamp"
+    "SDL_SetWindowFullscreen"
+    "SDL_SetWindowDisplayMode"
+    "SDL_SetWindowBrightness"
+    "SDL_SetThreadPriority"
+    "SDL_SetTextureColorMod"
+    "SDL_SetTextureBlendMode"
+    "SDL_SetTextureAlphaMod"
+    "SDL_SetSurfaceRLE"
+    "SDL_SetSurfacePalette"
+    "SDL_SetSurfaceColorMod"
+    "SDL_SetSurfaceBlendMode"
+    "SDL_SetSurfaceAlphaMod"
+    "SDL_SetRenderTarget"
+    "SDL_SetRenderDrawColor"
+    "SDL_SetRenderDrawBlendMode"
+    "SDL_SetRelativeMouseMode"
+    "SDL_SetPixelFormatPalette"
+    "SDL_SetPaletteColors"
+    "SDL_SetColorKey"
+    "SDL_SetClipboardText"
+    "SDL_SemWait"
+    "SDL_SemPost"
+    "SDL_SaveBMP_RW"
+    "SDL_RenderSetViewport"
+    "SDL_RenderSetScale"
+    "SDL_RenderSetLogicalSize"
+    "SDL_RenderSetIntegerScale"
+    "SDL_RenderSetClipRect"
+    "SDL_RenderReadPixels"
+    "SDL_RenderFillRects"
+    "SDL_RenderFillRect"
+    "SDL_RenderDrawRects"
+    "SDL_RenderDrawRect"
+    "SDL_RenderDrawPoints"
+    "SDL_RenderDrawPoint"
+    "SDL_RenderDrawLines"
+    "SDL_RenderDrawLine"
+    "SDL_RenderCopyEx"
+    "SDL_RenderCopy"
+    "SDL_RenderClear"
+    "SDL_RedetectInputDevices"
+    "SDL_QueueAudio"
+    "SDL_QueryTexture"
+    "SDL_OpenURL"
+    "SDL_LowerBlitScaled"
+    "SDL_LowerBlit"
+    "SDL_LockTexture"
+    "SDL_LockSurface"
+    "SDL_LockMutex"
+    "SDL_JoystickGetBall"
+    "SDL_InitSubSystem"
+    "SDL_HapticUpdateEffect"
+    "SDL_HapticUnpause"
+    "SDL_HapticStopEffect"
+    "SDL_HapticStopAll"
+    "SDL_HapticSetGain"
+    "SDL_HapticSetAutocenter"
+    "SDL_HapticRunEffect"
+    "SDL_HapticRumbleStop"
+    "SDL_HapticRumblePlay"
+    "SDL_HapticRumbleInit"
+    "SDL_HapticPause"
+    "SDL_GetWindowOpacity"
+    "SDL_GetWindowGammaRamp"
+    "SDL_GetWindowDisplayMode"
+    "SDL_GetWindowBordersSize"
+    "SDL_GetTextureColorMod"
+    "SDL_GetTextureBlendMode"
+    "SDL_GetTextureAlphaMod"
+    "SDL_GetSurfaceColorMod"
+    "SDL_GetSurfaceBlendMode"
+    "SDL_GetSurfaceAlphaMod"
+    "SDL_GetRendererOutputSize"
+    "SDL_GetRendererInfo"
+    "SDL_GetRenderDriverInfo"
+    "SDL_GetRenderDrawColor"
+    "SDL_GetRenderDrawBlendMode"
+    "SDL_GetNumInputDevices"
+    "SDL_GetDisplayUsableBounds"
+    "SDL_GetDisplayDPI"
+    "SDL_GetColorKey"
+    "SDL_GL_SetSwapInterval"
+    "SDL_GL_MakeCurrent"
+    "SDL_GL_LoadLibrary"
+    "SDL_GL_GetAttribute"
+    "SDL_GL_BindTexture"
+    "SDL_FillRects"
+    "SDL_FillRect"
+    "SDL_ConvertPixels"
+    "SDL_CondSignal"
+    "SDL_CondBroadcast"
+    "SDL_CaptureMouse"
+    "SDL_BlitScaled"
+    "SDL_AudioInit")
+  "These are the functions that return a negative number when an error occurs,
+and you can call SDL_GetError to get info on it.  The return type for these is
+converted to `sdl-error-code', which is a cffi type that automatically signals
+an error if the return code is negative. See `ffi-type-transformer'.")
+
+;; *** 
+
+(defparameter *null-on-failure-conversion-list*
+  '(;; SDL Core
+    ;; Query: /regex:NULL.*SDL_GetError/
+    ;; Date queried: 30 March 2021. 59 results.
+    "SDL_WinRTGetFSPathUTF8"
+    "SDL_WinRTGetFSPathUNICODE"
+    "SDL_TLSGet"
+    "SDL_RenderGetD3D9Device"
+    "SDL_RWFromMem"
+    "SDL_RWFromFile"
+    "SDL_RWFromFP"
+    "SDL_RWFromConstMem"
+    "SDL_LoadWAV_RW"
+    "SDL_LoadObject"
+    "SDL_LoadFunction"
+    "SDL_LoadBMP_RW"
+    "SDL_JoystickOpen"
+    "SDL_JoystickNameForIndex"
+    "SDL_JoystickName"
+    "SDL_JoystickFromInstanceID"
+    "SDL_HapticOpenFromMouse"
+    "SDL_HapticOpenFromJoystick"
+    "SDL_HapticOpen"
+    "SDL_HapticName"
+    "SDL_GetWindowSurface"
+    "SDL_GetWindowFromID"
+    "SDL_GetRenderer"
+    "SDL_GetDisplayName"
+    "SDL_GetClosestDisplayMode"
+    "SDL_GetClipboardText"
+    "SDL_GetBasePath"
+    "SDL_GameControllerOpen"
+    "SDL_GameControllerMappingForGUID"
+    "SDL_GameControllerMapping"
+    "SDL_GameControllerFromInstanceID"
+    "SDL_GL_GetCurrentWindow"
+    "SDL_GL_GetCurrentContext"
+    "SDL_GL_CreateContext"
+    "SDL_DestroyWindow"
+    "SDL_CreateWindowFrom"
+    "SDL_CreateWindow"
+    "SDL_CreateThread"
+    "SDL_CreateTextureFromSurface"
+    "SDL_CreateTexture"
+    "SDL_CreateSystemCursor"
+    "SDL_CreateSoftwareRenderer"
+    "SDL_CreateSemaphore"
+    "SDL_CreateRenderer"
+    "SDL_CreateRGBSurfaceWithFormatFrom"
+    "SDL_CreateRGBSurfaceWithFormat"
+    "SDL_CreateRGBSurfaceFrom"
+    "SDL_CreateRGBSurface"
+    "SDL_CreateMutex"
+    "SDL_CreateCursor"
+    "SDL_CreateCond"
+    "SDL_CreateColorCursor"
+    "SDL_ConvertSurfaceFormat"
+    "SDL_ConvertSurface"
+    "SDL_AndroidGetInternalStoragePath"
+    "SDL_AndroidGetExternalStoragePath"
+    "SDL_AllocRW"
+    "SDL_AllocPalette"
+    "SDL_AllocFormat")
+  "These are the functions that return NULL on error, and you can call
+SDL_GetError to get info on it.  The return type for these is converted to
+`sdl-null-checked-type', which is a cffi type that automatically signals an error if the
+return value is NULL. See `ffi-type-transformer'.")
+
+;; ** type transformer
+
+(defun ffi-type-transformer (type-specifier context &rest args &key &allow-other-keys)
+  (let ((type-specifier (apply 'cffi/c2ffi:default-ffi-type-transformer
+                               type-specifier context args))
+        (name (when (consp context) (second context))))
+    (flet ((convert-function-p (conversion-list &optional &key (check-type nil))
+             (when (and name
+                        (eql (first context) :function)
+                        (eql (third context) :return-type)
+                        (member name conversion-list :test 'equal))
+               (if check-type (assert (eql type-specifier check-type)) t)
+               t)))
+      (cond
+        ((convert-function-p *negative-return-code-conversion-list* :check-type :int)
+         'sdl-error-code)
+        ((and (convert-function-p *null-on-failure-conversion-list*)
+              (not (member type-specifier '(:string :void (:pointer :void)) :test #'equal)))
+         (let ((*package* (find-package :hu.dwim.sdl)))
+           (get-null-checked-type-name type-specifier)
+           #+oooh-some-symbol-fiddling-bullshit-dont-even-bother
+           (let ((ft-name (get-null-checked-type-name type-specifier (find-package :hu.dwim.sdl))))
+             (eval
+              `(let ((*package* (find-package (find-package :hu.dwim.sdl))))
+                 (cffi:define-foreign-type ,ft-name (sdl-null-checked-type)
+                   ()
+                   (:default-initargs :actual-type (cffi::parse-type type-specifier))
+                   (:simple-parser ,ft-name)))))))
+        (t type-specifier)))))
