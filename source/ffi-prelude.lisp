@@ -4,26 +4,26 @@
 
 (in-package :hu.dwim.sdl)
 
+(defmacro eval-always (&body body)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     ,@body))
+
 ;; * sdl errors
 
 (define-condition sdl-error (error)
   ())
 
-(defun get+clear-sdl-error ()
-  "Some functions like sdl-get-window-from-id won't set sdl error message, so
-you will see the previous one: so make sure to keep everything cleaned."
-  (let ((err (hu.dwim.sdl/core::sdl-get-error)))
-    (if (emptyp err)
-        "/SDL_GetError contained no error message./"
-        (prog1 (princ-to-string err)
-          (hu.dwim.sdl/core:sdl-clear-error)))))
+(eval-always
+  (defun get+clear-sdl-error ()
+    "Some functions, like `sdl-get-window-from-id', won't set sdl error message,
+so you will see the previous one: so make sure to keep everything cleaned."
+    (let ((err (hu.dwim.sdl/core::sdl-get-error)))
+      (if (emptyp err)
+          "/SDL_GetError contained no error message./"
+          (prog1 (princ-to-string err)
+            (hu.dwim.sdl/core::sdl-clear-error))))))
 
 ;; ** negative return code error
-
-;; To test this, try:
-#+nil
-(hu.dwim.sdl/core:sdl-get-window-from-id 43434)
-;; to see: SDL call failed: "/SDL_GetError contained no error message./"
 
 (define-condition sdl-error/negative-return-code (simple-error sdl-error)
   ((error-code :initform (error "Must specify ERROR-CODE.")
@@ -50,7 +50,12 @@ you will see the previous one: so make sure to keep everything cleaned."
 ;; For an easy test of this, call:
 #+nil
 (hu.dwim.sdl/core:sdl-haptic-open-from-mouse)
+#+or
+(hu.dwim.sdl/core:sdl-get-window-from-id 43434)
 ;; to see: SDL call failed: "Haptic: Mouse isn't a haptic device."
+
+;; (handler-case (hu.dwim.sdl/core:sdl-haptic-open-from-mouse)
+;;   (error (c) (ut:repl c)))
 
 ;; OK, the approach like with the negative return code won't exactly work here,
 ;; as functions return different types of pointers.  So, let's define wrappers
@@ -66,16 +71,17 @@ you will see the previous one: so make sure to keep everything cleaned."
   (:simple-parser sdl-null-checked-type))
 
 (defmethod cffi:expand-from-foreign (value (type sdl-null-checked-type))
-  ;; NOTE: strictly speaking it should be (cffi:convert-from-foreign ,value :int), but not in this case.
-  `(let ((return-value ,value))
+  (ut:repl (cffi::actual-type type))
+  `(let ((return-value (cffi:convert-from-foreign ,value :pointer))
+         (type-returned ',(class-name (class-of type))))
      (when (cffi:null-pointer-p return-value)
        (error 'sdl-error/null-returned
-              :type-info ',(class-name (class-of type))
-              :format-control "SDL call failed: ~S"
-              :format-arguments (list (get+clear-sdl-error))))
+              :type-info type-returned
+              :format-control "SDL call failed: ~S.~%~%The function returns: ~a."
+              :format-arguments (list (get+clear-sdl-error) type-returned)))
      return-value))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-always
   (defun get-null-checked-type-name (type-specifier)
     (symbolicate 'sdl-null-checked-type/
                  (if (symbolp type-specifier)
@@ -263,7 +269,7 @@ expression when generating again.")
 ;; See https://wiki.libsdl.org/SGFunctions for some format details.
 ;; These aren't religiously followed by them, though.
 ;; And here's the search page: https://wiki.libsdl.org/FindPage
-;; I brace each query in slashes.
+;; Below, I brace each query in slashes, don't put them in the actual search bar.
 
 ;; There's gotta be an easier way than just copying page results and running an
 ;; emacs macro on them.  Because this is like _super_ *lame*, dude.
