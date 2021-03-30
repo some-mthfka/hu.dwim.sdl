@@ -58,7 +58,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
   (:simple-parser sdl-boolean))
 
 (defmethod cffi:expand-from-foreign (value (type sdl-boolean))
-  `(eql value hu.dwim.sdl/core:+true+))
+  `(eql value hu.dwim.sdl/core::+true+))
 
 ;; ** booleans (where SDL_FALSE means an error)
 
@@ -67,7 +67,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
 (define-condition sdl-error/false-returned (simple-error sdl-error) ())
 
 (defmethod cffi:expand-from-foreign (value (type sdl-boolean-checked-type))
-  `(let ((result (eql value hu.dwim.sdl/core:+true+)))
+  `(let ((result (eql value hu.dwim.sdl/core::+true+)))
      (unless result
        (error 'sdl-error/false-returned
               :format-control "SDL call failed: ~S ~S"
@@ -303,9 +303,9 @@ expression when generating again.")
                (if check-type (assert (eql type-specifier check-type)) t)
                t)))
       (cond
-        ((convert-function-p *negative-return-code-conversion-list/core* :check-type :int)
+        ((convert-function-p *negative-returned-error-list/core* :check-type :int)
          'sdl-error-code)
-        ((and (convert-function-p *null-on-failure-conversion-list/core*)
+        ((and (convert-function-p *null-returned-error-list/core*)
               (not (member type-specifier '(:string :void (:pointer :void)) :test #'equal)))
          (let ((*package* (find-package :hu.dwim.sdl)))
            (get-null-checked-type-name type-specifier)

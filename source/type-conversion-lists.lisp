@@ -35,7 +35,7 @@
 ;; TODO this list is by far not complete. see this SDL bug for details:
 ;; https://bugzilla.libsdl.org/show_bug.cgi?id=3219
 
-(defparameter *negative-return-code-conversion-list/core*
+(defparameter *negative-returned-error-list/core*
   '(;; [DK] One could say that the list below is probably still incomplete, but
     ;; I guess someone will have to find out the hard way.
     ;; Query: /regex:"Returns 0 on success".*SDL_GetError/
@@ -172,7 +172,7 @@
 ;; `sdl-null-checked-type', which is a cffi type that automatically signals an
 ;; error if the return value is NULL. See `ffi-type-transformer'.
 
-(defparameter *null-on-failure-conversion-list/core*
+(defparameter *null-returned-error-list/core*
   '(;; Query: /regex:NULL.*SDL_GetError/
     ;; Date queried: 30 March 2021. 59 results.
     "SDL_WinRTGetFSPathUTF8"
@@ -236,8 +236,8 @@
     "SDL_AllocFormat"))
 
 (defparameter *all-conversion-lists*
-  (list *negative-return-code-conversion-list/core*
-        *null-on-failure-conversion-list/core*))
+  (list *negative-returned-error-list/core*
+        *null-returned-error-list/core*))
 
 (loop for x in *all-conversion-lists*
       do (loop for y in *all-conversion-lists*
