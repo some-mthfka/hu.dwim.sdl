@@ -337,7 +337,7 @@
   "SDL_GameControllerGetStringForAxis"
   "SDL_AndroidGetActivity")
 
-;; ** core / functions returning void
+;; ** core / void functions
 
 (defl *return-void/core*              ; generated this in `ffi-type-transformer'
   "SDL_Quit" "SDL_QuitSubSystem" "SDL_GetVersion" "SDL_Delay"
@@ -379,9 +379,9 @@
   "SDL_LogMessageV" "SDL_ClearQueuedAudio" "SDL_SetWindowResizable"
   "SDL_iPhoneSetEventPump")
 
-;; ** core / functions returning SDL_bool
+;; ** core / booleans (no error checking)
 
-(defl *return-boolean-list/core*
+(defl *return-boolean-no-errors/core*
   ;; Google query: "SDL_TRUE" -"negative" -"-1" -"SDL_GetError" site:wiki.libsdl.org
   ;; look through all of these manually on the wiki:
   "SDL_Has3DNow"
@@ -433,7 +433,9 @@
   "SDL_RenderGetIntegerScale" ; "SDL_TRUE if integer scales are forced or SDL_FALSE if not and on failure"
   )
 
-(defl *return-boolean-error-on-false-list/core* ; checked all of these manually on wiki
+;; ** core / boolean check errors (on SDL_FALSE)
+
+(defl *return-boolean-check-errors/core* ; checked all of these manually on wiki
   ;; Google Query: "SDL_TRUE" "SDL_GetError" -"negative" -"-1" site:wiki.libsdl.org
   ;; manually verified all of these
   "SDL_GetEventFilter" ; SDL_FALSE if there is no event filter set.
@@ -443,6 +445,8 @@
   "SDL_GetWindowWMInfo"; SDL_FALSE if the information could not be retrieved;
   "SDL_DXGIGetOutputInfo" ; Returns SDL_TRUE on success or SDL_FALSE on failure;
   "SDL_PixelFormatEnumToMasks") ; Returns SDL_TRUE on success or SDL_FALSE if the conversion wasn't possible;
+
+;; ** core / errors on 0
 
 (defl *return-int-zero-on-failure/core*    ; checked all of these manually on wiki
   ;; checked all of these manually on wiki:
@@ -470,6 +474,32 @@
   "SDL_AndroidGetJNIEnv"
   "SDL_AndroidGetExternalStorageState"
   "SDL_AddTimer")
+
+;; ** core / return enum error check
+
+(defparameter *return-enum-check-invalid/core*
+  '(("SDL_SensorGetType" "SDL_SENSOR_INVALID")
+    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
+    ("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
+    ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN")
+    ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN")
+    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
+    ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
+    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
+    ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE")
+    ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE")
+    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
+    ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
+
+;; ** core / return constants indicating errors
+
+(defparameter *return-int-constant-on-failure/core*
+  (check-repeats
+   (append
+    (mapcar (lambda (x) (list x 0)) *return-int-zero-on-failure/core*)
+    `(("SDL_RegisterEvents" ,(1- (expt 2 32))))))) ; (Uint32)-1 if there are not enough user-defined events left.
+
+;; ** core / skip
 
 (defl *skip/core*                       ; checked all of these manually on wiki
   ;; requires a manual check
@@ -571,42 +601,36 @@
   "SDL_tolower" "SDL_toupper" "SDL_isspace" "SDL_isdigit" "SDL_abs" "SDL_setenv"
   "SDL_getenv" "SDL_realloc" "SDL_calloc" "SDL_malloc" "strerror")
 
-(defparameter *return-enum-check-invalid/core*
-  '(("SDL_SensorGetType" "SDL_SENSOR_INVALID")
-    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
-    ("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
-    ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
-    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
-    ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE")
-    ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE")
-    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
-    ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
+;; * all
+
+;; ** enum checks
+
+(defparameter *return-enum-check-invalid/all*
+  (append *return-enum-check-invalid/core*))
 
 (defparameter *return-enum-check-invalid-names/all*
-  (check-repeats (mapcar #'first *return-enum-check-invalid/core*)))
-
-(defparameter *return-int-constant-on-failure/core*
   (check-repeats
-   (append
-    (mapcar (lambda (x) (list x 0)) *return-int-zero-on-failure/core*)
-    `(("SDL_RegisterEvents" ,(1- (expt 2 32))))))) ; (Uint32)-1 if there are not enough user-defined events left.
+   (mapcar #'first *return-enum-check-invalid/all*)))
 
-(defparameter *return-int-constant-failure-names/all*
-  (check-repeats (mapcar #'first *return-int-constant-on-failure/core*)))
+;; ** constant checks
 
-;; (diff (mappend #'append *all-conversion-lists*) *g-negative*)
+(defparameter *return-int-constant-on-failure/all*
+  (append *return-int-constant-on-failure/core*))
+
+(defparameter *return-int-constant-on-failure-names/all*
+  (check-repeats
+   (mapcar #'first *return-int-constant-on-failure/all*)))
+
+;; * checks
 
 (progn
   (defparameter *all-conversion-lists*
     (list *negative-returned-error-list/core*
           *null-returned-error-list/core*
-          *return-boolean-list/core*
-          *return-boolean-error-on-false-list/core*
+          *return-boolean-no-errors/core*
+          *return-boolean-check-errors/core*
           *return-enum-check-invalid-names/all*
-          *return-int-constant-failure-names/all*
+          *return-int-constant-on-failure-names/all*
           *return-void/core*
           *skip/core*))
   (loop for x in *all-conversion-lists*

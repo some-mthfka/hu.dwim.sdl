@@ -74,7 +74,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
               :format-arguments (list (get+clear-sdl-error))))
      result))
 
-;; ** null pointer returned
+;; ** null pointer returned is error
 
 ;; For an easy test of this, call:
 #+nil
