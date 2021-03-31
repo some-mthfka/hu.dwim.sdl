@@ -218,16 +218,21 @@ so you will see the previous one: so make sure to keep everything cleaned."
 after running, it makes it easy to catch off the abbreviations.  Make sure it's
 always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 
+(defun member* (x list) (member x list :test #'equal))
+
 (defun catch-questionable-names (name)
   (when (and (cl-ppcre:scan "-.-" name)
              (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name))
-             (not (member name *questionable-names*))) ; easier than adding hooks to perform
+             (not (member* name *questionable-names*))) ; easier than adding hooks to perform
     (push name *questionable-names*))
   name)
 
+(defparameter *unknown-names* nil)
+
 (defun catch-unknown-names (name)
-  (when )
-  )
+  (unless (some (curry #'member* name) *all-conversion-lists*)
+    ;; (member* name *unknown-names*)
+    (push name *unknown-names*)))
 
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
@@ -308,7 +313,7 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 ;; ** type transformer
 
 (defparameter *string-thing* nil)
-(defparameter *void-thing* nil)
+(defparameter *bool-thing* nil)
 
 (defun ffi-type-transformer (type-specifier context &rest args &key &allow-other-keys)
   (let ((type-specifier (apply 'cffi/c2ffi:default-ffi-type-transformer
@@ -316,8 +321,9 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
         (name (when (consp context) (second context))))
     (when (and (eql (first context) :function)
                (eql (third context) :return-type))
-      (if (equal :string type-specifier) (push name *string-thing*))
-      (if (equal :void type-specifier) (push name *void-thing*)))
+      (catch-unknown-names name)
+      (when (eql type-specifier 'sdl-bool)
+        (push name *bool-thing*)))
     (flet ((convert-function-p (conversion-list &optional &key (check-type nil))
              (when (and name
                         (eql (first context) :function)

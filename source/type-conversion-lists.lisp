@@ -39,7 +39,7 @@
 ;; SDL_Vulkan_GetInstanceExtensions
 ;; SDL_Vulkan_CreateSurface
 
-;; *** Negative Return Code is error
+;; ** core / negative return code is error
 
 ;; These are the functions that return a negative number when an error occurs,
 ;; and you can call SDL_GetError to get info on it.  The return type for these is
@@ -54,7 +54,7 @@
   ;; Date queried: 30 March 2021. 121 results.
   "SDL_CreateWindowAndRenderer"
   "SDL_VideoInit"
-  "SDL_JoystickIsHaptic"                ; boolean, negative on error
+  "SDL_JoystickIsHaptic"                ; boolean, negative on error TODO
   "SDL_HapticRumbleSupported"           ; boolean, negative on error
   "SDL_HapticEffectSupported"           ; boolean, negative on error
   "SDL_GL_SetAttribute"
@@ -108,7 +108,7 @@
   "SDL_RenderSetViewport"
   "SDL_RenderSetScale"
   "SDL_RenderSetLogicalSize"
-  "SDL_RenderSetIntegerScale"
+  "SDL_RenderSetIntegerScale" ; SDL_FALSE if not and on failure;
   "SDL_RenderSetClipRect"
   "SDL_RenderReadPixels"
   "SDL_RenderFillRects"
@@ -207,7 +207,7 @@
   "SDL_GetNumDisplayModes"
   "SDL_OpenAudio"
   "SDL_OpenAudioDevice"
-  ;; more
+  ;; checked the following manually on wiki:
   "SDL_RWtell"
   "SDL_RWseek"
   "SDL_SensorGetNonPortableType"
@@ -237,9 +237,12 @@
   "SDL_HapticIndex"
   "SDL_Direct3D9GetAdapterIndex"
   "SDL_LoadDollarTemplates" ; could be 0, check yourself: negative error code (or 0) on failure
-  "SDL_BlitSurface")
+  "SDL_BlitSurface"
+  "SDL_UpperBlitScaled"
+  "SDL_UpperBlit"
+  "SDL_SoftStretch")
 
-;; *** null is error
+;; ** core / null is error
 
 ;; These are the functions that return NULL on error, and you can call
 ;; SDL_GetError to get info on it.  The return type for these is converted to
@@ -247,7 +250,7 @@
 ;; error if the return value is NULL. See `ffi-type-transformer'.
 
 (defl *null-returned-error-list/core*
-  ;; Query: /regex:NULL.*SDL_GetError/
+  ;; Query (on old SDL wiki): /regex:NULL.*SDL_GetError/
   "SDL_WinRTGetFSPathUTF8"
   "SDL_WinRTGetFSPathUNICODE"
   "SDL_TLSGet"
@@ -332,8 +335,9 @@
   "SDL_GameControllerName"
   "SDL_GameControllerGetStringForButton"
   "SDL_GameControllerGetStringForAxis"
-  "SDL_AndroidGetActivity"
-  )
+  "SDL_AndroidGetActivity")
+
+;; ** core / functions returning void
 
 (defl *return-void/core*              ; generated this in `ffi-type-transformer'
   "SDL_Quit" "SDL_QuitSubSystem" "SDL_GetVersion" "SDL_Delay"
@@ -368,78 +372,80 @@
   "SDL_AudioQuit" "SDL_FreeRW" "SDL_DetachThread" "SDL_WaitThread"
   "SDL_DestroyCond" "SDL_DestroySemaphore" "SDL_DestroyMutex" "SDL_ClearError"
   "SDL_AtomicUnlock" "SDL_AtomicLock" "SDL_ResetAssertionReport"
-  "SDL_SetAssertionHandler" "SDL_SetMainReady" "SDL_qsort" "SDL_free")
+  "SDL_SetAssertionHandler" "SDL_SetMainReady" "SDL_qsort" "SDL_free"
+  ;; also void, but i have old specs, so they didn't show up in `ffi-type-transformer'
+  "SDL_Vulkan_UnloadLibrary" "SDL_Vulkan_GetDrawableSize" "SDL_TriggerBreakpoint"
+  "SDL_SetWindowsMessageHook" "SDL_SensorUpdate" "SDL_SensorClose"
+  "SDL_LogMessageV" "SDL_ClearQueuedAudio" "SDL_SetWindowResizable"
+  "SDL_iPhoneSetEventPump")
+
+;; ** core / functions returning SDL_bool
 
 (defl *return-boolean-list/core*
   ;; Google query: "SDL_TRUE" -"negative" -"-1" -"SDL_GetError" site:wiki.libsdl.org
-  "SDL_RectEmpty"
-  "SDL_RectEquals"
-  "SDL_Vulkan_GetInstanceExtensions"
-  "SDL_IsTextInputActive"
-  "SDL_GetRelativeMouseMode"
-  "SDL_HasScreenKeyboardSupport"
-  "SDL_IsScreenKeyboardShown"
-  "SDL_HasEvent"
-  "SDL_IsScreenSaverEnabled"
-  "SDL_HasClipboardText"
-  "SDL_HasIntersection"
-  "SDL_AtomicCAS"
-  "SDL_AtomicCASPtr"
-  "SDL_HasEvents"
-  "SDL_PointInRect"
-  "SDL_RenderTargetSupported"
-  "SDL_QuitRequested"
+  ;; look through all of these manually on the wiki:
   "SDL_Has3DNow"
-  "SDL_HasAVX"
   "SDL_HasSSE42"
-  "SDL_SetHintWithPriority"
   "SDL_HasMMX"
-  "SDL_iPhoneSetEventPump"
-  "SDL_GetEventFilter"
+  "SDL_HasAVX"
   "SDL_HasAVX2"
-  "SDL_IntersectRect"
-  "SDL_GetWindowGrab"
-  "SDL_MUSTLOCK"
-  "SDL_IsGameController"
   "SDL_HasSSE2"
   "SDL_HasSSE"
   "SDL_HasSSE41"
   "SDL_HasSSE3" 
+  "SDL_HasEvent"
+  "SDL_HasEvents"
+  "SDL_HasScreenKeyboardSupport"
+  "SDL_HasClipboardText"
+  "SDL_HasIntersection"
   "SDL_HasAltiVec"
   "SDL_HasRDTSC"
-  "SDL_Vulkan_CreateSurface"
-  "SDL_IntersectRectAndLine"
-  "SDL_EnclosePoints"
-  "SDL_SetClipRect"
+  "SDL_IsTextInputActive"
+  "SDL_IsScreenKeyboardShown"
+  "SDL_IsScreenSaverEnabled"
+  "SDL_IsGameController" ; SDL_FALSE if it isn't or it's an invalid index.
   "SDL_GameControllerGetAttached"
-  "SDL_SetWindowResizable"
+  "SDL_QuitRequested"
+  "SDL_PointInRect"
+  "SDL_RectEquals"
+  "SDL_RectEmpty"
+  "SDL_GetRelativeMouseMode"
+  "SDL_SetHint"
+  "SDL_GetHintBoolean"
+  "SDL_SetHintWithPriority"
+  "SDL_GL_ExtensionSupported"
+  "SDL_IntersectRect"
+  "SDL_IntersectRectAndLine"
+  "SDL_SetClipRect"
+  "SDL_AtomicCAS"
+  "SDL_AtomicCASPtr"
   "SDL_AtomicTryLock"
-  "SDL_RemoveTimer"
   "SDL_AtomicDecRef"
+  "SDL_RenderTargetSupported"
+  "SDL_GetWindowGrab"
+  "SDL_EnclosePoints"
   ;; Google Query: "SDL_TRUE" "SDL_GetError" -"negative" -"-1" site:wiki.libsdl.org
   ;; These ones give extra info with SDL_Error, but I guess they shouldn't
   ;; throw a condition, so they are a part of this list.
   ;; checked all of these manually on wiki:
-  "SDL_JoystickGetAttached"
-  "SDL_RenderIsClipEnabled"
-  "SDL_GetWindowWMInfo"
+  "SDL_JoystickGetAttached" ; call SDL_GetError() for more information.
+  "SDL_RenderIsClipEnabled" ; SDL_TRUE if clipping is enabled or SDL_FALSE if not; call SDL_GetError() for more information.
   "SDL_RenderGetIntegerScale" ; "SDL_TRUE if integer scales are forced or SDL_FALSE if not and on failure"
-  ;; others, also checked manually
-  "SDL_SetHint"
-  "SDL_MouseIsHaptic"
-  "SDL_GL_ExtensionSupported"
-  "SDL_GetHintBoolean"
-  ) 
-
+  )
 
 (defl *return-boolean-error-on-false-list/core* ; checked all of these manually on wiki
   ;; Google Query: "SDL_TRUE" "SDL_GetError" -"negative" -"-1" site:wiki.libsdl.org
   ;; manually verified all of these
+  "SDL_GetEventFilter" ; SDL_FALSE if there is no event filter set.
+  "SDL_RemoveTimer" ; SDL_FALSE if the timer wasn't found
+  "SDL_Vulkan_GetInstanceExtensions" ; Returns SDL_TRUE on success, SDL_FALSE on error
+  "SDL_Vulkan_CreateSurface" ; Returns SDL_TRUE on success, SDL_FALSE on error.
+  "SDL_GetWindowWMInfo"; SDL_FALSE if the information could not be retrieved;
   "SDL_DXGIGetOutputInfo" ; Returns SDL_TRUE on success or SDL_FALSE on failure;
   "SDL_PixelFormatEnumToMasks") ; Returns SDL_TRUE on success or SDL_FALSE if the conversion wasn't possible;
 
 (defl *return-int-zero-on-failure/core*    ; checked all of these manually on wiki
-  ;; Google Query: "Returns 1 on" site:wiki.libsdl.org
+  ;; checked all of these manually on wiki:
   "SDL_SaveDollarTemplate"
   "SDL_RecordGesture"
   "SDL_WaitEventTimeout"
@@ -451,7 +457,6 @@
   "SDL_WriteLE32"
   "SDL_WriteLE64"
   "SDL_WriteU8"
-  ;; checked this manually on wiki:
   "SDL_RWread"
   "SDL_TLSCreate"
   "SDL_SaveAllDollarTemplates"
@@ -466,11 +471,7 @@
   "SDL_AndroidGetExternalStorageState"
   "SDL_AddTimer")
 
-(defl *skip*                            ; checked all of these manually on wiki
-  ;; void, but i have old specs
-  "SDL_Vulkan_UnloadLibrary" "SDL_Vulkan_GetDrawableSize" "SDL_TriggerBreakpoint"
-  "SDL_SetWindowsMessageHook" "SDL_SensorUpdate" "SDL_SensorClose"
-  "SDL_LogMessageV" "SDL_ClearQueuedAudio"
+(defl *skip/core*                       ; checked all of these manually on wiki
   ;; requires a manual check
   "SDL_RWwrite" ; Returns the number of objects written, which will be less than **num** on error
   "SDL_DequeueAudio" ; Returns number of bytes dequeued, which could be less than requested; call SDL_GetError()
@@ -532,10 +533,13 @@
   "SDL_AtomicGetPtr"
   "SDL_AtomicGet"
   "SDL_AtomicAdd"
+  "SDL_Error"                        ; internal use https://wiki.libsdl.org/ToDo
+  "SDL_ReportAssertion"              ; internal use https://wiki.libsdl.org/ToDo
   ;; these are bool-like, but since they return int, should probably stay that way in case SDL api extends on them
-  "SDL_EventState" ; uint8 Returns `SDL_DISABLE` or `SDL_ENABLE`
-  "SDL_JoystickGetButton" ; uint8 Returns 1 if the specified button is pressed, 0 otherwise.
-  "SDL_PollEvent" ; int Returns 1 if there is a pending event or 0 if there are none available.
+  "SDL_EventState"                 ; uint8 Returns `SDL_DISABLE` or `SDL_ENABLE`
+  "SDL_JoystickGetButton" ; uint8, Returns 1 if the specified button is pressed, 0 otherwise.
+  "SDL_PollEvent" ; int, Returns 1 if there is a pending event or 0 if there are none available.
+  "SDL_MouseIsHaptic" ; int, Returns SDL_TRUE if the mouse is haptic or SDL_FALSE if it isn't.
   ;; no error checking needed, but I ain't that certain, or the wiki isn't
   "SDL_GetWindowData"
   "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
@@ -552,38 +556,59 @@
   "SDL_GetQueuedAudioSize" ; uint32 Returns the number of bytes (not samples!) of queued audio.
   "SDL_GetPlatform" ; If the correct platform name is not available, returns a string beginning with the text "Unknown".
   "SDL_GL_GetSwapInterval"
-  "SDL_GL_GetProcAddress")
+  "SDL_GL_GetProcAddress"
+  ;; well, imma just ignore these, alright? also see https://wiki.libsdl.org/ToDo
+  ;; some of these do their own arithmetic reporting
+  "SDL_iconv_string" "SDL_iconv" "SDL_iconv_close" "SDL_iconv_open" "SDL_sqrt"
+  "SDL_sinf" "SDL_scalbn" "SDL_floor" "SDL_fabs" "SDL_cosf" "SDL_copysign"
+  "SDL_ceil" "SDL_snprintf" "SDL_sscanf" "SDL_strncasecmp" "SDL_strcasecmp"
+  "SDL_strncmp" "SDL_strcmp" "SDL_strtod" "SDL_strtoull" "SDL_strtoll"
+  "SDL_strtoul" "SDL_strtol" "SDL_atof" "SDL_atoi" "SDL_ulltoa" "SDL_lltoa"
+  "SDL_ultoa" "SDL_ltoa" "SDL_uitoa" "SDL_itoa" "SDL_strstr" "SDL_strrchr"
+  "SDL_strchr" "SDL_strlwr" "SDL_strupr" "SDL_strrev" "SDL_strdup" "SDL_strlcat"
+  "SDL_utf8strlcpy" "SDL_strlcpy" "SDL_strlen" "SDL_wcslcat" "SDL_wcslcpy"
+  "SDL_wcslen" "SDL_memcmp" "SDL_memmove" "SDL_memcpy" "SDL_memset"
+  "SDL_tolower" "SDL_toupper" "SDL_isspace" "SDL_isdigit" "SDL_abs" "SDL_setenv"
+  "SDL_getenv" "SDL_realloc" "SDL_calloc" "SDL_malloc" "strerror")
 
 (defparameter *return-enum-check-invalid/core*
   '(("SDL_SensorGetType" "SDL_SENSOR_INVALID")
-    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
+    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
     ("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
     ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
-    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
     ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN")
+    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
     ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
-    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
+    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
     ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE")
     ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE")
+    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
     ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
 
-(defparameter *return-enum-check-invalid-names/core*
+(defparameter *return-enum-check-invalid-names/all*
   (check-repeats (mapcar #'first *return-enum-check-invalid/core*)))
 
-;; SDL_RegisterEvents ; Returns The beginning event number, or (Uint32)-1 if there are not enough user-defined events left.
+(defparameter *return-int-constant-on-failure/core*
+  (check-repeats
+   (append
+    (mapcar (lambda (x) (list x 0)) *return-int-zero-on-failure/core*)
+    `(("SDL_RegisterEvents" ,(1- (expt 2 32))))))) ; (Uint32)-1 if there are not enough user-defined events left.
+
+(defparameter *return-int-constant-failure-names/all*
+  (check-repeats (mapcar #'first *return-int-constant-on-failure/core*)))
 
 ;; (diff (mappend #'append *all-conversion-lists*) *g-negative*)
 
-(let ((*all-conversion-lists*
-        (list *negative-returned-error-list/core*
-              *null-returned-error-list/core*
-              *return-boolean-list/core*
-              *return-boolean-error-on-false-list/core*
-              *return-enum-check-invalid-names/core*
-              *return-int-zero-on-failure/core*
-              *return-void/core*
-              *skip*)))
+(progn
+  (defparameter *all-conversion-lists*
+    (list *negative-returned-error-list/core*
+          *null-returned-error-list/core*
+          *return-boolean-list/core*
+          *return-boolean-error-on-false-list/core*
+          *return-enum-check-invalid-names/all*
+          *return-int-constant-failure-names/all*
+          *return-void/core*
+          *skip/core*))
   (loop for x in *all-conversion-lists*
         do (loop for y in *all-conversion-lists*
                  when (not (eq x y))

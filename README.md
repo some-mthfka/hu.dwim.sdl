@@ -21,6 +21,8 @@ This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These a
     - `SDL_TRUE` -> `TRUE`
     - `SDL_FALSE` -> `FALSE`.
 
+I skipped _most_ the functions listed at https://wiki.libsdl.org/ToDo, which includes C function wrappers/equivalents (such `SDL_ceil`, `SDL_sscanf`, `SDL_strupr`, `SDL_strstr`, `SDL_strrchr` and many, many other hissing, stumpy sounds). Some functions I wasn't sure about. Some weren't documented. See *skip/core* for details. However, I didn't skip the `GameController` functions (they are a draft) as they had documentation, but you should treat them as a draft here as well.
+
 It shouldn't be too problematic to add support for `sdl2_mixer` or `sdl2_net`, but I didn't bother with the specs.
 
 ## What
