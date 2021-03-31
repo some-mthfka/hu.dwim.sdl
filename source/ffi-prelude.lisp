@@ -124,18 +124,31 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; unknown CFFI type errors.  Easier to mainain this little list right here.
 (dolist (type-specifier
          (append '(hu.dwim.sdl/core::sdl-glcontext)
+                 '(:string (:pointer :void))
                  (mapcar
                   (lambda (x) (list :pointer (ensure-symbol x 'hu.dwim.sdl/core)))
                   '(sdl-sem sdl-mutex sdl-surface sdl-palette sdl-pixelformat
                     sdl-audiospec sdl-rw-ops sdl-cond sdl-renderer sdl-haptic
                     sdl-joystick sdl-cursor sdl-glcontex sdl-surface sdl-window
                     sdl-thread sdl-displaymode sdl-glcontext sdl-gamecontroller
-                    sdl-texture))))
+                    sdl-texture sdl-finger))))
   (let ((ft (get-null-checked-type-name type-specifier)))
     (eval `(cffi:define-foreign-type ,ft (sdl-null-checked-type)
              ()
              (:default-initargs :actual-type (cffi::parse-type ',type-specifier))
              (:simple-parser ,ft)))))
+
+;; (cffi:define-foreign-type sdl-null-checked-type/void* (sdl-null-checked-type)
+;;   ()
+;;   (:default-initargs :actual-type (cffi::parse-type '(:pointer :void)))
+;;   (:simple-parser sdl-null-checked-type/void*))
+
+;; (cffi:define-foreign-type sdl-null-checked-type/string (sdl-null-checked-type)
+;;   ()
+;;   (:default-initargs :actual-type (cffi::parse-type :string))
+;;   (:simple-parser sdl-null-checked-type/string*))
+
+(cffi::parse-type :void)
 
 ;; * Export
 
@@ -203,15 +216,18 @@ so you will see the previous one: so make sure to keep everything cleaned."
 (defparameter *questionable-names* nil
   "If you generate names for other sdl modules, make sure to check this variable
 after running, it makes it easy to catch off the abbreviations.  Make sure it's
-always NIL, or add exceptions to `catch-questionable-names' if approprate.  Note
-that there's no automatic reset mechanism, so don't forget to reevaluate this
-expression when generating again.")
+always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 
 (defun catch-questionable-names (name)
   (when (and (cl-ppcre:scan "-.-" name)
-             (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name)))
+             (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name))
+             (not (member name *questionable-names*))) ; easier than adding hooks to perform
     (push name *questionable-names*))
   name)
+
+(defun catch-unknown-names (name)
+  (when )
+  )
 
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
@@ -291,22 +307,31 @@ expression when generating again.")
 
 ;; ** type transformer
 
+(defparameter *string-thing* nil)
+(defparameter *void-thing* nil)
+
 (defun ffi-type-transformer (type-specifier context &rest args &key &allow-other-keys)
   (let ((type-specifier (apply 'cffi/c2ffi:default-ffi-type-transformer
                                type-specifier context args))
         (name (when (consp context) (second context))))
+    (when (and (eql (first context) :function)
+               (eql (third context) :return-type))
+      (if (equal :string type-specifier) (push name *string-thing*))
+      (if (equal :void type-specifier) (push name *void-thing*)))
     (flet ((convert-function-p (conversion-list &optional &key (check-type nil))
              (when (and name
                         (eql (first context) :function)
                         (eql (third context) :return-type)
                         (member name conversion-list :test 'equal))
-               (if check-type (assert (eql type-specifier check-type)) t)
+               (if check-type (assert (member (make-keyword type-specifier) check-type)))
                t)))
       (cond
-        ((convert-function-p *negative-returned-error-list/core* :check-type :int)
+        ((convert-function-p *negative-returned-error-list/core*
+                             :check-type '(:int :sdl-audiodevice-id :sdl-joystick-id))
          'sdl-error-code)
         ((and (convert-function-p *null-returned-error-list/core*)
-              (not (member type-specifier '(:string :void (:pointer :void)) :test #'equal)))
+              ;; (not (member type-specifier '(:string :void (:pointer :void)) :test #'equal))
+              )
          (let ((*package* (find-package :hu.dwim.sdl)))
            (get-null-checked-type-name type-specifier)
            #+oooh-some-symbol-fiddling-bullshit-dont-even-bother
