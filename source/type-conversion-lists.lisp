@@ -249,7 +249,7 @@
 ;; `sdl-null-checked-type', which is a cffi type that automatically signals an
 ;; error if the return value is NULL. See `ffi-type-transformer'.
 
-(defl *null-returned-error-list/core*
+(defl *return-null-on-failure/core*
   ;; Query (on old SDL wiki): /regex:NULL.*SDL_GetError/
   "SDL_WinRTGetFSPathUTF8"
   "SDL_WinRTGetFSPathUNICODE"
@@ -603,7 +603,24 @@
 
 ;; * all
 
-;; ** enum checks
+;; ** all / boolean (no errors)
+
+(defparameter *return-boolean-no-errors/all*
+  (check-repeats
+   (append *return-boolean-no-errors/core*)))
+
+;; ** all / boolean (with errors)
+
+(defparameter *return-boolean-check-errors/all*
+  (check-repeats
+   (append *return-boolean-check-errors/core*)))
+
+;; ** all / null returns
+
+(defparameter *return-null-on-failure/all*
+  (append *return-null-on-failure/core*))
+
+;; ** all / enum checks
 
 (defparameter *return-enum-check-invalid/all*
   (append *return-enum-check-invalid/core*))
@@ -612,7 +629,7 @@
   (check-repeats
    (mapcar #'first *return-enum-check-invalid/all*)))
 
-;; ** constant checks
+;; ** all / constant checks
 
 (defparameter *return-int-constant-on-failure/all*
   (append *return-int-constant-on-failure/core*))
@@ -626,7 +643,7 @@
 (progn
   (defparameter *all-conversion-lists*
     (list *negative-returned-error-list/core*
-          *null-returned-error-list/core*
+          *return-null-on-failure/core*
           *return-boolean-no-errors/core*
           *return-boolean-check-errors/core*
           *return-enum-check-invalid-names/all*
@@ -638,7 +655,4 @@
                  when (not (eq x y))
                    do (assert (null (intersection x y :test #'equal)))))
   ;; total function count
-  (reduce #'+ (mapcar #'length *all-conversion-lists*))
-  (diff (mappend #'append *all-conversion-lists*) *all*)
-  ;; => ("SDL_free" "SDL_qsort") ; both return void
-  (diff *all* (mappend #'append *all-conversion-lists*)))
+  (reduce #'+ (mapcar #'length *all-conversion-lists*)))
