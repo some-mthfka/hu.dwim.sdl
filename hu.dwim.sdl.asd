@@ -16,9 +16,12 @@
                (:file "type-conversion-lists"
                 :pathname "source/type-conversion-lists"
                 :depends-on ("package-stage-1"))
-               (:file "ffi-prelude"
-                :pathname "source/ffi-prelude"
+               (:file "name-translation"
+                :pathname "source/name-translation"
                 :depends-on ("type-conversion-lists"))
+               (:file "custom-types"
+                :pathname "source/custom-types"
+                :depends-on ("name-translation"))
                (:module "source"
                 :depends-on ("c2ffi-spec" "package-stage-1")
                 :serial t
@@ -26,7 +29,7 @@
                              (:file "package-stage-3")
                              (:file "sdl")))
                (:module "c2ffi-spec"
-                :depends-on ("ffi-prelude")
+                :depends-on ("custom-types")
                 :components ((:cffi/c2ffi-file "sdl.h"
                               :package #:hu.dwim.sdl/core
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
