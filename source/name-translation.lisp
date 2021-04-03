@@ -17,11 +17,14 @@
   (sort (list "SDL" "SDL2" "IMG" "TTF" "GFX"
               "TLS" "CAS" "CVT"
               "UNICODE" "UTF8"
-              "3D" "CPU" "MMX" "RAM" "AVX" "RLE" "RDTSC"
+              "3D" "CPU" "MMX" "RAM" "AVX" "AVX2" "AVX512F" "RLE" "RDTSC"
+              "3DNow" "ARMSIMD" "AltiVec" "NEON"
               "(L|B)E[0-9][0-9]" "SSE[0-9]*"
               "RGBA" "RGB" "YUV"
               "GUID" "ID" "GL" "WM" "RW" "XY" "FP"
               "WAV"
+              "DUMMY" "ANON" "UNION" "STRUCT" "ENUM"
+              "OS" "FILE"
               "ICO" "CUR" "BMP" "GIF" "JPG" "LBM" "PCX" "PNG" "PNM" "TIF"
               "XPM" "XCF" "XV" "WEBP" "TGA")
         #'>
@@ -56,12 +59,12 @@
                 :key #'first
                 :test #'equal)))
 
+(defun member* (x list) (member x list :test #'equal))
+
 (defparameter *questionable-names* nil
   "If you generate names for other sdl modules, make sure to check this variable
-after running, it makes it easy to catch off the abbreviations.  Make sure it's
+after running, it makes it easy to catch off the abbreviations.  Best kept
 always NIL, or add exceptions to `catch-questionable-names' if approprate.")
-
-(defun member* (x list) (member x list :test #'equal))
 
 (defun catch-questionable-names (name)
   (when (and (cl-ppcre:scan "-.-" name)
@@ -80,7 +83,7 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
   (check-type name string)
-  (let ((name* (caps-replace name)))
+  (let ((name* (caps-replace (substitute #\_ #\- name))))
     (labels ((_->- (name) (substitute #\- #\_ name))
              (from-camel (name) (cffi/c2ffi:camelcase-to-dash-separated name))
              (muff (name char) (concatenate 'string char name char))
@@ -89,7 +92,6 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
              (as-global (name) (muff (downcase name) "*"))
              (as-field (name) (from-camel name))
              (as-type (name) (from-camel (caps-replace name)))
-             (as-enum (name) name)
              (as-function (name) (from-camel (caps-replace name))))
       (catch-questionable-names
        (cffi-sys:canonicalize-symbol-name-case
@@ -101,7 +103,7 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
              (as-const name*))
             (:member ; member of an enum, aka "SDL_ASSERTION_ABORT", "SDL_FALSE"
              (as-const name*)) 
-            (:variable                  ; none found
+            (:variable                  ; none
              (as-global name*))
             (:field  ; "__val", "BitsPerPixel", "Gshift", "num_texture_formats" 
              (as-field name*))
@@ -109,13 +111,13 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
              (as-field name*))
             (:function                  ; "SDL_GetNumVideoDisplays"
              (as-function name*))
-            (:struct                    ; "SDL_HAPTICCONDITION"
-             (as-enum name*))
-            (:union                     ; "SDL_HAPTICEFFECT"
-             (as-enum name*))
-            (:enum                      ; none found (all are anonymous)
-             (as-enum name*))
-            (:type                      ; none passed to this function
+            (:struct                    ; "SDL_Surface", "ANON-STRUCT-1"
+             (as-type name*))
+            (:union                     ; "SDL_HapticEffect"
+             (as-type name*))
+            (:enum                      ; "ANON-ENUM-52"
+             (as-type name*))
+            (:type                      ; "Uint32"
              (as-type name*))
             (otherwise name)))))))))
 
@@ -152,7 +154,9 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   (check :function "SDL_WriteBE64" "SDL-WRITE-BE64")
   (check :function "SDL_WriteLE16" "SDL-WRITE-LE16")
   (check :function "SDL_HasSSE41" "SDL-HAS-SSE41")
-  (check :function "SDL_GetRGBA" "SDL-GET-RGBA"))
+  (check :function "SDL_GetRGBA" "SDL-GET-RGBA")
+  (check :struct "ANON-STRUCT-1" "ANON-STRUCT-1")
+  (check :enum "ANON-ENUM-10" "ANON-ENUM-10"))
 
 ;; * Export
 

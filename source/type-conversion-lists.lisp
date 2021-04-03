@@ -486,8 +486,8 @@
     ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
     ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
     ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
-    ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE")
-    ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE")
+    ;; ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
+    ;; ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
     ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
     ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
 

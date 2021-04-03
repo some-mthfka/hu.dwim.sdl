@@ -15,42 +15,22 @@
 ;; Say we want to automatically check the returned value of "SDL_CreateWindow"
 ;; for NULL and throw a condition.  That's what defining custom return types is
 ;; gonna do for us, and that we do with `cffi:define-foreign-type'.  As such, it
-;; requires us to specify the actual type, which, in the case of window
-;; creation, is "SDL_Window *".  Thing is, one would probably want not to worry
-;; about such details and instead generate things on the fly, but I found it
-;; much simpler just to do the bookkeeping yourself, so don't be surprised when
-;; you see lists of types below.  It's not that bad, really, and should require
-;; maintenance only when new return types are defined and you have a function
-;; that returns it in the conversion lists.  If you add a function with an
-;; unknown return type to the conversion lists, but don't add the type in the
-;; right place below, you will simply get an error.  So, that's easy enough.
-
-;; Also: the symbols for foreign types which we define belong to this package,
-;; not to the ffi packages.  You could go that way too, but that requires more
-;; structure and bookkeeping for no apparent benefit.
-
-;; CAUTION: if you want to try your hand at automating this anyway, don't try to
-;; define the foreign types in `ffi-type-transformer', it's not gonna work for
-;; two reasons: one, `cffi::*type-parsers*' is dynamically bound to a copy of
-;; itself, and two, it would only work if the generation phase ran every time on
-;; load, which is not the case.  One would have to go further: collect the
-;; necessary types there, save them to a file, and then load it in some
-;; `perform' :after method.  What a bother.
+;; requires us to specify the actual type (which, in the case of window
+;; creation, is "SDL_Window *").
 
 ;; ** utils
 
 (define-condition sdl-error (error)
   ())
 
-(eval-always
-  (defun get+clear-sdl-error ()
-    "Some functions, like `sdl-get-window-from-id', won't set sdl error message,
+(defun get+clear-sdl-error ()
+  "Some functions, like `sdl-get-window-from-id', won't set sdl error message,
 so you will see the previous one: so make sure to keep everything cleaned."
-    (let ((err (hu.dwim.sdl/core::sdl-get-error)))
-      (if (emptyp err)
-          "/SDL_GetError contained no error message./"
-          (prog1 (princ-to-string err)
-            (hu.dwim.sdl/core::sdl-clear-error))))))
+  (let ((err (hu.dwim.sdl/core::sdl-get-error)))
+    (if (emptyp err)
+        "/SDL_GetError() had no error message./"
+        (prog1 (princ-to-string err)
+          (hu.dwim.sdl/core::sdl-clear-error)))))
 
 ;; ** negative return code error
 
@@ -114,108 +94,118 @@ so you will see the previous one: so make sure to keep everything cleaned."
               :format-arguments (list (get+clear-sdl-error))))
      result))
 
-;; ** enum values that signal errors
-
-;; (defparameter *return-enum-check-invalid/core*
-;;   '(("SDL_SensorGetType" "SDL_SENSOR_INVALID")
-;;     ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
-;;     ("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
-;;     ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN")
-;;     ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN")
-;;     ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
-;;     ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
-;;     ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN") ; enum
-;;     ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE")
-;;     ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE")
-;;     ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
-;;     ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
-
-;; (cffi:define-foreign-type sdl-enum-value-checked-type (simple-error sdl-error)
-;;   ()
-;;   (:default-initargs :actual-type (cffi::parse-type :boolean))
-;;   (:simple-parser sdl-boolean-checked-type))
-
-;; (eval-always
-;;   (defun get-enum-value-checked-type-name (type-specifier)
-;;     (symbolicate 'sdl-enum-value-checked-type/ type-specifier)))
-
-;; (dolist (type-specifier
-;;          (mapcar (lambda (x) (ensure-symbol x 'hu.dwim.sdl/core))
-;;                  (remove-duplicates (mapcar #'second *return-enum-check-invalid/core*)
-;;                                     :test #'equal)))
-;;   (let ((ft (get-enum-value-checked-type-name type-specifier)))
-;;     (eval `(cffi:define-foreign-type ,ft (sdl-enum-value-checked-checked-type)
-;;              ()
-;;              (:default-initargs :actual-type (cffi::parse-type ',type-specifier))
-;;              (:simple-parser ,ft)))))
-
 ;; ** null pointer returned is error
 
-;; For an easy test of this, call:
 #+nil
 (hu.dwim.sdl/core:sdl-haptic-open-from-mouse)
 #+or
 (hu.dwim.sdl/core:sdl-get-window-from-id 43434)
-;; to see: SDL call failed: "Haptic: Mouse isn't a haptic device."
 
-;; OK, the approach like with the negative return code won't exactly work here,
-;; as functions return different types of pointers.  So, let's define wrappers
-;; for all those types (and make them inherit from one null-checked type).
+(defmacro define-sdl-condition (name)
+  `(define-condition ,(symbolicate 'sdl-error/ name) (simple-error sdl-error) ()))
 
-(define-condition sdl-error/null-returned (simple-error sdl-error)
-  ((type-info :initform (error "Must specify TYPE-INFO.")
-              :accessor type-info-of
-              :initarg :type-info)))
+(define-sdl-condition null-returned)
 
-(cffi:define-foreign-type sdl-null-checked-type (cffi::foreign-type-alias)
-  ()
-  (:simple-parser sdl-null-checked-type))
+(defun get-new-type-name (kind function-name actual-type)
+  (symbolicate function-name '/ kind '/
+               (if (symbolp actual-type)
+                   actual-type                    
+                   (progn (assert (eql :pointer (first actual-type)))
+                          (assert (eql (length actual-type) 2))
+                          (symbolicate (second actual-type) '*)))))
 
-(defmethod cffi:expand-from-foreign (value (type sdl-null-checked-type))
-  `(let ((return-value (cffi:convert-from-foreign ,value :pointer))
-         (type-returned ',(class-name (class-of type))))
-     (when (cffi:null-pointer-p return-value)
-       (error 'sdl-error/null-returned
-              :type-info type-returned
-              :format-control "SDL call failed: ~S.~%~%The function returns: ~a."
-              :format-arguments (list (get+clear-sdl-error) type-returned)))
-     return-value))
+(defun generate-custom-type-definer (actual-type custom-type)
+  `(cffi:define-foreign-type ,custom-type (cffi::foreign-type-alias)
+     ()
+     (:default-initargs :actual-type (cffi::parse-type ',actual-type))
+     (:simple-parser ,custom-type)))
 
-(eval-always
-  (defun get-null-checked-type-name (type-specifier)
-    (symbolicate 'sdl-null-checked-type/
-                 (if (symbolp type-specifier)
-                     type-specifier
-                     (progn (assert (eql :pointer (first type-specifier)))
-                            (assert (eql (length type-specifier) 2))
-                            (symbolicate (second type-specifier) '*))))))
+(defmacro defforeign (name)
+  `(cffi:define-foreign-type ,name (cffi::foreign-type-alias) ()
+     (:simple-parser ,name)))
 
-;; (ql:quickload 'ut)
+(defforeign sdl-null-checked-type)
 
-;; Note: trying to define foreign type for some reason requires a let wrapping
-;; where you bind the target *package*, but here we are ok with the current
-;; package, so we don't need it.
+(defun generate-type-expand-defmethod/null-checked
+    (actual-type custom-type original-function-name condition-name)
+  (declare (ignore original-function-name))
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type)))
+        (when (cffi:null-pointer-p return-value)
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%The function returns: ~a."
+                 :format-arguments (list (get+clear-sdl-error) ',',actual-type)))
+        return-value)))
 
-(dolist (type-specifier
-         (append '(hu.dwim.sdl/core::sdl-gl-context) ; this is a pointer type
-                 '(:string (:pointer :void))
-                 (mapcar ; pointer generation
-                  (lambda (x) (list :pointer (ensure-symbol x 'hu.dwim.sdl/core)))
-                  '(sdl-sem sdl-mutex sdl-surface sdl-palette sdl-pixel-format
-                    sdl-audio-spec sdl-rw-ops sdl-cond sdl-renderer sdl-haptic
-                    sdl-joystick sdl-cursor sdl-surface sdl-window
-                    sdl-thread sdl-display-mode sdl-game-controller
-                    sdl-texture sdl-finger))))
-  (let ((ft (get-null-checked-type-name type-specifier)))
-    (eval `(cffi:define-foreign-type ,ft (sdl-null-checked-type)
-             ()
-             (:default-initargs :actual-type (cffi::parse-type ',type-specifier))
-             (:simple-parser ,ft)))))
+(defmacro def-custom-type-setup-macro (name condition-name)
+  `(defmacro ,(symbolicate 'custom-type-setup/ name)
+       (original-function-name new-function-name actual-type custom-type)
+     (let ((condition-name (symbolicate new-function-name '-error)))
+       `(progn
+          (define-condition ,condition-name (,',(symbolicate 'sdl-error/ condition-name)) ())
+          ,(generate-custom-type-definer actual-type custom-type)
+          ,(,(symbolicate 'generate-type-expand-defmethod/ name)
+            actual-type custom-type original-function-name condition-name)))))
+
+(def-custom-type-setup-macro null-checked null-returned)
+
+(defmacro def-type-conversion-processor (name)
+  `(defun ,(symbolicate 'process/ name) (original-function-name actual-type)
+     (let* ((new-function-name (ffi-name-transformer original-function-name :function))
+            (custom-type (get-new-type-name new-function-name ',name actual-type)))
+       ;; so glad I came up with this hack instead of prepending to a file ( ͡° ͜ʖ ͡°)
+       (cffi/c2ffi::output/code
+        `(,',(ensure-symbol (symbolicate 'custom-type-setup '/ name)
+                            (find-package :hu.dwim.sdl))
+          ,original-function-name ,new-function-name ,actual-type ,custom-type))
+       custom-type)))
+
+(def-type-conversion-processor null-checked)
+
+;; ** enum values that signal errors
+
+#+nil
+(hu.dwim.sdl/core:sdl-get-scancode-from-name "A") ; should return 4
+#+nil
+(hu.dwim.sdl/core:sdl-get-scancode-from-name "AA") ; error
+
+(defun generate-type-expand-defmethod/enum-checked
+    (actual-type custom-type original-function-name condition-name)
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     ;; Enumerations can either be signed or unsigned, shouldn't convert here
+     ;; probably.  And the actual type is an enum, which is nor right to convert
+     ;; to either (yields a symbol, I am not sure how that works exactly).
+     `(let ((return-value ,value)) ; (cffi:convert-from-foreign ,value ',',actual-type)
+        (when (eql return-value
+                   ;; bake the value of the constant right in here, not even the symbol:
+                   ,,(symbolicate (ffi-name-transformer
+                                   (second (assoc original-function-name
+                                                  *return-enum-check-invalid/all*
+                                                  :test #'equal))
+                                   :constant)))
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%The function returns: ~a."
+                 :format-arguments (list (get+clear-sdl-error) ',',actual-type)))
+        return-value)))
+
+(define-sdl-condition enum-invalid-code)
+
+(defforeign sdl-enum-checked-type)
+
+(def-custom-type-setup-macro enum-checked enum-invalid-code)
+
+(def-type-conversion-processor enum-checked)
 
 ;; * type transformer
 
 (defparameter *string-thing* nil)
 (defparameter *bool-thing* nil)
+(defparameter *bool-thing2* nil) ; SDL_BOOL
+(defparameter *negative-error-types* nil) ;  => (SDL-JOYSTICK-ID SDL-AUDIO-DEVICE-ID :INT)
+
+(defparameter *null-checked-function-info* nil)
+
+(defparameter *custom-type-code* nil)
 
 (defun ffi-type-transformer (type-specifier context &rest args &key &allow-other-keys)
   (let ((type-specifier (apply 'cffi/c2ffi:default-ffi-type-transformer
@@ -226,22 +216,25 @@ so you will see the previous one: so make sure to keep everything cleaned."
       (catch-unknown-names name)
       (when (eql type-specifier 'sdl-bool)
         (push name *bool-thing*)))
-    (flet ((convert-p (conversion-list &optional &key (check-type nil))
+    (flet ((convert-p (conversion-list &optional &key (check-type nil) (key #'identity))
              (when (and name
                         (eql (first context) :function)
                         (eql (third context) :return-type)
-                        (member name conversion-list :test 'equal))
+                        (member name conversion-list :test 'equal :key key))
                (if check-type (assert (member (make-keyword type-specifier) check-type)))
                t)))
-      (let ((*package* (find-package :hu.dwim.sdl)))
-        (cond
-          ((convert-p *negative-returned-error-list/core*
-                      :check-type '(:int :sdl-audio-device-id :sdl-joystick-id))
-           'sdl-error-code)
-          ((convert-p *return-boolean-no-errors/all*)
-           'sdl-boolean)
-          ((convert-p *return-boolean-check-errors/all*)
-           'sdl-boolean-checked-type)
-          ((convert-p *return-null-on-failure/all*)
-           (get-null-checked-type-name type-specifier))
-          (t type-specifier))))))
+      ;; let ((*package* (find-package :hu.dwim.sdl))) ; for correct type name generation
+      (cond
+        ;; ((convert-p *negative-returned-error-list/core*
+        ;;             :check-type '(:int :sdl-audio-device-id :sdl-joystick-id))
+        ;;  (push type-specifier *negative-error-types*)
+        ;;  'sdl-error-code)
+        ;; ((convert-p *return-boolean-no-errors/all*)
+        ;;  'sdl-boolean)
+        ;; ((convert-p *return-boolean-check-errors/all*)
+        ;;  'sdl-boolean-checked-type)
+        ((convert-p *return-null-on-failure/all*)
+         (process/null-checked name type-specifier))
+        ((convert-p *return-enum-check-invalid/all* :key #'first)
+         (process/enum-checked name type-specifier))
+        (t type-specifier)))))
