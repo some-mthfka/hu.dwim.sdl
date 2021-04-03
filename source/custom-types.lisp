@@ -33,8 +33,8 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 ;; ** generation shared stuff
 
-(defmacro define-sdl-condition (name)
-  `(define-condition ,(symbolicate 'sdl-error/ name) (simple-error sdl-error) ()))
+(defmacro define-sdl-condition (name-postfix)
+  `(define-condition ,(symbolicate 'sdl-error/ name-postfix) (simple-error sdl-error) ()))
 
 (defun get-new-type-name (kind function-name actual-type)
   (symbolicate function-name '/ kind '/
@@ -44,18 +44,24 @@ so you will see the previous one: so make sure to keep everything cleaned."
                           (assert (eql (length actual-type) 2))
                           (symbolicate (second actual-type) '*)))))
 
+(defun generate-condition-definer (condition-name condition-name-postfix)
+  (when condition-name-postfix
+    `(define-condition ,condition-name
+         (,(ensure-symbol (symbolicate 'sdl-error/ condition-name-postfix)
+                          (find-package :hu.dwim.sdl))) ())))
+
 (defun generate-custom-type-definer (actual-type custom-type)
   `(cffi:define-foreign-type ,custom-type (cffi::foreign-type-alias)
      ()
      (:default-initargs :actual-type (cffi::parse-type ',actual-type))
      (:simple-parser ,custom-type)))
 
-(defmacro def-custom-type-setup-macro (name condition-name)
+(defmacro def-custom-type-setup-macro (name condition-name-postfix)
   `(defmacro ,(symbolicate 'custom-type-setup/ name)
        (original-function-name new-function-name actual-type custom-type)
      (let ((condition-name (symbolicate new-function-name '-error)))
        `(progn
-          (define-condition ,condition-name (,',(symbolicate 'sdl-error/ condition-name)) ())
+          ,(generate-condition-definer condition-name ',condition-name-postfix)
           ,(generate-custom-type-definer actual-type custom-type)
           ,(,(symbolicate 'generate-type-expand-defmethod/ name)
             actual-type custom-type original-function-name new-function-name condition-name)))))
@@ -153,40 +159,45 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 (def-type-conversion-processor negative-checked)
 
-;; ** booleans (no error checking)
+;; ** bool conversion (no error checking)
 
 #+nil
-(hu.dwim.sdl/core:sdl-has-3d-now)
+(hu.dwim.sdl/core:sdl-has-3dnow)
 #+nil
 (hu.dwim.sdl/core:sdl-has-sse)
 
-(cffi:define-foreign-type sdl-boolean (cffi::foreign-type-alias)
-  ()
-  (:default-initargs :actual-type (cffi::parse-type :boolean))
-  (:simple-parser sdl-boolean))
+(defun generate-type-expand-defmethod/bool-conversion
+    (actual-type custom-type original-function-name new-function-name condition-name)
+  (declare (ignore actual-type original-function-name new-function-name condition-name))
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(eql ,value hu.dwim.sdl/core::+true+)))
 
-(defmethod cffi:expand-from-foreign (value (type sdl-boolean))
-  `(eql ,value hu.dwim.sdl/core::+true+))
+(def-custom-type-setup-macro bool-conversion nil)
+
+(def-type-conversion-processor bool-conversion)
 
 ;; ** booleans (where SDL_FALSE means an error)
 
 #+nil
 (hu.dwim.sdl/core:sdl-remove-timer 0)
 
-(cffi:define-foreign-type sdl-boolean-checked-type (sdl-boolean)
-  ()
-  (:default-initargs :actual-type (cffi::parse-type :boolean))
-  (:simple-parser sdl-boolean-checked-type))
+(defun generate-type-expand-defmethod/checked-bool-conversion
+    (actual-type custom-type original-function-name new-function-name condition-name)
+  (declare (ignore original-function-name))
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(let ((return-value ,value))
+        (when (eql return-value hu.dwim.sdl/core::+false+)
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
+                 :format-arguments (list (get+clear-sdl-error) ,',new-function-name
+                                         return-value ',',actual-type)))
+        t))) ; assumes +TRUE+ is the only other option besides +FALSE+
 
-(define-condition sdl-error/false-returned (simple-error sdl-error) ())
+(define-sdl-condition false-returned)
 
-(defmethod cffi:expand-from-foreign (value (type sdl-boolean-checked-type))
-  `(let ((result (eql ,value hu.dwim.sdl/core::+true+)))
-     (unless result
-       (error 'sdl-error/false-returned
-              :format-control "SDL call failed: ~S"
-              :format-arguments (list (get+clear-sdl-error))))
-     result))
+(def-custom-type-setup-macro checked-bool-conversion false-returned)
+
+(def-type-conversion-processor checked-bool-conversion)
 
 ;; * type transformer
 
@@ -217,14 +228,14 @@ so you will see the previous one: so make sure to keep everything cleaned."
                t)))
       ;; let ((*package* (find-package :hu.dwim.sdl))) ; for correct type name generation
       (cond
-        ;; ((convert-p *return-boolean-no-errors/all*)
-        ;;  'sdl-boolean)
-        ;; ((convert-p *return-boolean-check-errors/all*)
-        ;;  'sdl-boolean-checked-type)
         ((convert-p *return-null-on-failure/all*)
          (process/null-checked name type-specifier))
         ((convert-p *return-enum-check-invalid/all* :key #'first)
          (process/enum-checked name type-specifier))
         ((convert-p *negative-returned-error-list/core*)
          (process/negative-checked name type-specifier))
+        ((convert-p *return-boolean-no-errors/all*)
+         (process/bool-conversion name type-specifier))
+        ((convert-p *return-boolean-check-errors/all*)
+         (process/checked-bool-conversion name type-specifier))
         (t type-specifier)))))
