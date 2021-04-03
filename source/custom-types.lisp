@@ -135,6 +135,34 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 (def-type-conversion-processor enum-checked)
 
+;; ** constant checked
+
+#+nil
+(hu.dwim.sdl/core:sdl-get-window-id (cffi:null-pointer))
+#+nil
+(hu.dwim.sdl/core:sdl-tls-create) ; works
+
+(defun generate-type-expand-defmethod/constant-checked
+    (actual-type custom-type original-function-name new-function-name condition-name)
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type))) ; 
+        (when (eql return-value
+                   ;; bake in the value of the constant:
+                   ,,(second (assoc original-function-name
+                                    *return-constant-on-failure/all*
+                                    :test #'equal)))
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
+                 :format-arguments (list (get+clear-sdl-error) ,',new-function-name
+                                         return-value ',',actual-type)))
+        return-value)))
+
+(define-sdl-condition constant-invalid-code)
+
+(def-custom-type-setup-macro constant-checked constant-invalid-code)
+
+(def-type-conversion-processor constant-checked)
+
 ;; ** negative return code error
 
 #+nil
@@ -232,6 +260,8 @@ so you will see the previous one: so make sure to keep everything cleaned."
          (process/null-checked name type-specifier))
         ((convert-p *return-enum-check-invalid/all* :key #'first)
          (process/enum-checked name type-specifier))
+        ((convert-p *return-constant-on-failure/all* :key #'first)
+         (process/constant-checked name type-specifier))
         ((convert-p *negative-returned-error-list/core*)
          (process/negative-checked name type-specifier))
         ((convert-p *return-boolean-no-errors/all*)

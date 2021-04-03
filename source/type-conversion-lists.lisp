@@ -465,8 +465,8 @@
   "SDL_TLSCreate"
   "SDL_SaveAllDollarTemplates"
   "SDL_GetNumTouchFingers"
-  "SDL_JoystickGetGUID"
-  "SDL_JoystickGetDeviceGUID"
+  ;; "SDL_JoystickGetGUID" ; TODO returns struct
+  ;; "SDL_JoystickGetDeviceGUID" ; TODO returns struct
   "SDL_HapticQuery" ; Returns a list of supported haptic features in bitwise manner (OR'd), or 0 on failure; 
   "SDL_GetWindowID"
   "SDL_GetTouchDevice"
@@ -493,7 +493,7 @@
 
 ;; ** core / return constants indicating errors
 
-(defparameter *return-int-constant-on-failure/core*
+(defparameter *return-constant-on-failure/core*
   (check-repeats
    (append
     (mapcar (lambda (x) (list x 0)) *return-int-zero-on-failure/core*)
@@ -631,12 +631,12 @@
 
 ;; ** all / constant checks
 
-(defparameter *return-int-constant-on-failure/all*
-  (append *return-int-constant-on-failure/core*))
+(defparameter *return-constant-on-failure/all*
+  (append *return-constant-on-failure/core*))
 
-(defparameter *return-int-constant-on-failure-names/all*
+(defparameter *return-constant-on-failure-names/all*
   (check-repeats
-   (mapcar #'first *return-int-constant-on-failure/all*)))
+   (mapcar #'first *return-constant-on-failure/all*)))
 
 ;; * checks
 
@@ -647,7 +647,7 @@
           *return-boolean-no-errors/core*
           *return-boolean-check-errors/core*
           *return-enum-check-invalid-names/all*
-          *return-int-constant-on-failure-names/all*
+          *return-constant-on-failure-names/all*
           *return-void/core*
           *skip/core*))
   (loop for x in *all-conversion-lists*
