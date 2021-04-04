@@ -166,3 +166,16 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   (declare (ignore symbol))
   ;; unlike with `ffi-name-transformer', theres seems to be nothing like `kind' here...
   t)
+
+;; * Epilogue: unknown names warning
+
+;; these will show up in all sdl packages, filtering wouldn't hurt, but that's a bother
+(defun epilogue-callback (&key &allow-other-keys)
+  (list
+   `(when *unknown-names*
+      (warn "The following functions are not specified in the type conversion
+lists, so automatic error signaling for them will not work, and the boolean
+values will not be automatically converted: ~a." *unknown-names*))))
+
+(defun callback-factory (&key &allow-other-keys)
+  (values nil #'epilogue-callback))

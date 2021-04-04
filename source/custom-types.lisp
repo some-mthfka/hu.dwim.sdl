@@ -1,7 +1,5 @@
 ;;; This file is loaded before the generated FFI.
 
-;; TODO export all error conditions
-
 (in-package :hu.dwim.sdl)
 
 (defmacro eval-always (&body body)
@@ -20,7 +18,7 @@
 
 ;; ** preliminaries
 
-(define-condition sdl-error (error) ())
+(define-condition sdl-error (simple-error) ())
 
 (defun get+clear-sdl-error ()
   "Some functions, like `sdl-get-window-from-id', won't set sdl error message,
@@ -33,9 +31,6 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 ;; ** generation shared stuff
 
-(defmacro define-sdl-condition (name-postfix)
-  `(define-condition ,(symbolicate 'sdl-error/ name-postfix) (simple-error sdl-error) ()))
-
 (defun get-new-type-name (kind function-name actual-type)
   (symbolicate function-name '/ kind '/
                (if (symbolp actual-type)
@@ -44,11 +39,10 @@ so you will see the previous one: so make sure to keep everything cleaned."
                           (assert (eql (length actual-type) 2))
                           (symbolicate (second actual-type) '*)))))
 
-(defun generate-condition-definer (condition-name condition-name-postfix)
-  (when condition-name-postfix
-    `(define-condition ,condition-name
-         (,(ensure-symbol (symbolicate 'sdl-error/ condition-name-postfix)
-                          (find-package :hu.dwim.sdl))) ())))
+(defun generate-condition-definer (condition-name)
+  `(progn
+     (define-condition ,condition-name (hu.dwim.sdl::sdl-error) ())
+     (export '(,condition-name))))
 
 (defun generate-custom-type-definer (actual-type custom-type)
   `(cffi:define-foreign-type ,custom-type (cffi::foreign-type-alias)
@@ -56,12 +50,13 @@ so you will see the previous one: so make sure to keep everything cleaned."
      (:default-initargs :actual-type (cffi::parse-type ',actual-type))
      (:simple-parser ,custom-type)))
 
-(defmacro def-custom-type-setup-macro (name condition-name-postfix)
+(defmacro def-custom-type-setup-macro (name  &optional (error-checked t))
   `(defmacro ,(symbolicate 'custom-type-setup/ name)
        (original-function-name new-function-name actual-type custom-type)
      (let ((condition-name (symbolicate new-function-name '-error)))
        `(progn
-          ,(generate-condition-definer condition-name ',condition-name-postfix)
+          ,,(when error-checked
+              ``,(generate-condition-definer condition-name))
           ,(generate-custom-type-definer actual-type custom-type)
           ,(,(symbolicate 'generate-type-expand-defmethod/ name)
             actual-type custom-type original-function-name new-function-name condition-name)))))
@@ -96,18 +91,16 @@ so you will see the previous one: so make sure to keep everything cleaned."
                                          ',',actual-type)))
         return-value)))
 
-(define-sdl-condition null-returned)
-
-(def-custom-type-setup-macro null-checked null-returned)
+(def-custom-type-setup-macro null-checked)
 
 (def-type-conversion-processor null-checked)
 
 ;; ** enum values that signal errors
 
 #+nil
-(hu.dwim.sdl/core:sdl-get-scancode-from-name "A") ; should return 4
+(hu.dwim.sdl/core:sdl-get-scancode-from-name "A") ; should return an integer
 #+nil
-(hu.dwim.sdl/core:sdl-get-scancode-from-name "AA") ; error
+(hu.dwim.sdl/core:sdl-get-scancode-from-name "AA") ; shoudl signal a condition
 
 (defun generate-type-expand-defmethod/enum-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -129,9 +122,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
                                          return-value ',',actual-type)))
         return-value)))
 
-(define-sdl-condition enum-invalid-code)
-
-(def-custom-type-setup-macro enum-checked enum-invalid-code)
+(def-custom-type-setup-macro enum-checked)
 
 (def-type-conversion-processor enum-checked)
 
@@ -157,9 +148,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
                                          return-value ',',actual-type)))
         return-value)))
 
-(define-sdl-condition constant-invalid-code)
-
-(def-custom-type-setup-macro constant-checked constant-invalid-code)
+(def-custom-type-setup-macro constant-checked)
 
 (def-type-conversion-processor constant-checked)
 
@@ -181,9 +170,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
                                          return-value ',',actual-type)))
         return-value)))
 
-(define-sdl-condition negative-return-code)
-
-(def-custom-type-setup-macro negative-checked negative-return-code)
+(def-custom-type-setup-macro negative-checked)
 
 (def-type-conversion-processor negative-checked)
 
@@ -221,9 +208,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
                                          return-value ',',actual-type)))
         t))) ; assumes +TRUE+ is the only other option besides +FALSE+
 
-(define-sdl-condition false-returned)
-
-(def-custom-type-setup-macro checked-bool-conversion false-returned)
+(def-custom-type-setup-macro checked-bool-conversion)
 
 (def-type-conversion-processor checked-bool-conversion)
 

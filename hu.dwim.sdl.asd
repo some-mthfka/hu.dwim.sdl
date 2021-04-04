@@ -32,6 +32,7 @@
                 :depends-on ("custom-types")
                 :components ((:cffi/c2ffi-file "sdl.h"
                               :package #:hu.dwim.sdl/core
+                              :callback-factory "hu.dwim.sdl::callback-factory"
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
@@ -73,6 +74,7 @@
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-gfx.h"
                               :package #:hu.dwim.sdl/gfx
+                              :callback-factory "hu.dwim.sdl::callback-factory"
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
@@ -108,6 +110,7 @@
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-ttf.h"
                               :package #:hu.dwim.sdl/ttf
+                              :callback-factory "hu.dwim.sdl::callback-factory"
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
@@ -140,6 +143,7 @@
   :components ((:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-image.h"
                               :package #:hu.dwim.sdl/image
+                              :callback-factory "hu.dwim.sdl::callback-factory"
                               :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
                               :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
                               :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
