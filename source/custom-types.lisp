@@ -216,6 +216,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 (defparameter *string-thing* nil)
 (defparameter *bool-thing* nil)
+(defparameter *void-thing* nil)
 (defparameter *bool-thing2* nil) ; SDL_BOOL
 (defparameter *negative-error-types* nil) ;  => (SDL-JOYSTICK-ID SDL-AUDIO-DEVICE-ID :INT)
 
@@ -230,8 +231,8 @@ so you will see the previous one: so make sure to keep everything cleaned."
     (when (and (eql (first context) :function)
                (eql (third context) :return-type))
       (catch-unknown-names name)
-      (when (eql type-specifier 'sdl-bool)
-        (push name *bool-thing*)))
+      (when (eql type-specifier :void) ;; TODO remove
+        (push name *void-thing*)))
     (flet ((convert-p (conversion-list &optional &key (check-type nil) (key #'identity))
              (when (and name
                         (eql (first context) :function)
@@ -239,7 +240,6 @@ so you will see the previous one: so make sure to keep everything cleaned."
                         (member name conversion-list :test 'equal :key key))
                (if check-type (assert (member (make-keyword type-specifier) check-type)))
                t)))
-      ;; let ((*package* (find-package :hu.dwim.sdl))) ; for correct type name generation
       (cond
         ((convert-p *return-null-on-failure/all*)
          (process/null-checked name type-specifier))
@@ -247,7 +247,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
          (process/enum-checked name type-specifier))
         ((convert-p *return-constant-on-failure/all* :key #'first)
          (process/constant-checked name type-specifier))
-        ((convert-p *negative-returned-error-list/core*)
+        ((convert-p *return-negative-on-failure/all*)
          (process/negative-checked name type-specifier))
         ((convert-p *return-boolean-no-errors/all*)
          (process/bool-conversion name type-specifier))

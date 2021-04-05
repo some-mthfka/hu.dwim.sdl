@@ -2,8 +2,6 @@
 
 ;; This file is for listing return type conversions for functions.
 
-;; ttf docs here:
-;; http://sdl.beuc.net/sdl.wiki/SDL_ttf
 ;; gfx docs here:
 ;; https://www.ferzkopp.net/Software/SDL2_gfx/Docs/html/index.html
 
@@ -41,15 +39,7 @@
 
 ;; ** core / negative return code is error
 
-;; These are the functions that return a negative number when an error occurs,
-;; and you can call SDL_GetError to get info on it.  The return type for these is
-;; converted to `sdl-error-code', which is a cffi type that automatically signals
-;; an error if the return code is negative. See `ffi-type-transformer'.
-
-;; TODO this list is by far not complete. see this SDL bug for details:
-;; https://bugzilla.libsdl.org/show_bug.cgi?id=3219
-
-(defl *negative-returned-error-list/core*
+(defl *return-negative-on-failure/core*
   ;; Query: /regex:"Returns 0 on success".*SDL_GetError/
   ;; Date queried: 30 March 2021. 121 results.
   "SDL_CreateWindowAndRenderer"
@@ -337,7 +327,7 @@
   "SDL_GameControllerGetStringForAxis"
   "SDL_AndroidGetActivity")
 
-;; ** core / void functions
+;; ** core / void
 
 (defl *return-void/core*              ; generated this in `ffi-type-transformer'
   "SDL_Quit" "SDL_QuitSubSystem" "SDL_GetVersion" "SDL_Delay"
@@ -448,7 +438,7 @@
 
 ;; ** core / errors on 0
 
-(defl *return-int-zero-on-failure/core*    ; checked all of these manually on wiki
+(defl *return-0-on-failure/core*    ; checked all of these manually on wiki
   ;; checked all of these manually on wiki:
   "SDL_SaveDollarTemplate"
   "SDL_RecordGesture"
@@ -496,7 +486,7 @@
 (defparameter *return-constant-on-failure/core*
   (check-repeats
    (append
-    (mapcar (lambda (x) (list x 0)) *return-int-zero-on-failure/core*)
+    (mapcar (lambda (x) (list x 0)) *return-0-on-failure/core*)
     `(("SDL_RegisterEvents" ,(1- (expt 2 32))))))) ; (Uint32)-1 if there are not enough user-defined events left.
 
 ;; ** core / skip
@@ -520,7 +510,7 @@
   "SDL_log"
   ;; no error checking needed for sure
   "SDL_GetTicks"
-  "SDL_WasInit"
+  "SDL_WasInit" ; not a bool, "returns the initialization status of the specified subsystems"
   "SDL_GetThreadID"
   "SDL_ThreadID"
   "SDL_SetError"
@@ -601,24 +591,121 @@
   "SDL_tolower" "SDL_toupper" "SDL_isspace" "SDL_isdigit" "SDL_abs" "SDL_setenv"
   "SDL_getenv" "SDL_realloc" "SDL_calloc" "SDL_malloc" "strerror")
 
+;; * SDL TTF
+
+;; I looked up all the functions in this sections here:
+;; https://www.libsdl.org/projects/SDL_ttf/docs/SDL_ttf.html
+;; "TTF_GetError: This is really a defined macro for SDL_GetError"
+;; "TTF_SetError: This is really a defined macro for SDL_SetError"
+
+;; ** ttf / negative return code is error
+
+(defl *return-negative-on-failure/ttf*
+  "TTF_Init" ; Returns: 0 on success, -1 on any error
+  "TTF_SizeUNICODE"
+  "TTF_SizeUTF8"
+  "TTF_SizeText"
+  "TTF_GlyphMetrics")
+
+;; ** ttf / null is error
+
+(defl *return-null-on-failure/ttf*
+  "TTF_OpenFont"
+  "TTF_OpenFontRW"
+  "TTF_OpenFontIndex" 
+  "TTF_OpenFontIndexRW"
+  "TTF_RenderGlyph_Blended"
+  "TTF_RenderUNICODE_Blended_Wrapped"
+  "TTF_RenderUTF8_Blended_Wrapped"
+  "TTF_RenderText_Blended_Wrapped"
+  "TTF_RenderUNICODE_Blended"
+  "TTF_RenderUTF8_Blended"
+  "TTF_RenderText_Blended"
+  "TTF_RenderGlyph_Shaded"
+  "TTF_RenderUNICODE_Shaded"
+  "TTF_RenderUTF8_Shaded"
+  "TTF_RenderText_Shaded"
+  "TTF_RenderGlyph_Solid"
+  "TTF_RenderUNICODE_Solid"
+  "TTF_RenderUTF8_Solid"
+  "TTF_RenderText_Solid")
+
+;; ** ttf / void
+
+(defl *return-void/ttf*
+  "TTF_Quit"
+  "TTF_CloseFont"
+  "TTF_SetFontKerning"
+  "TTF_SetFontHinting"
+  "TTF_SetFontOutline"
+  "TTF_SetFontStyle"
+  "TTF_ByteSwappedUNICODE")
+
+;; ** ttf / bool-like ints
+
+;; TODO no errors, 0 means false
+"TTF_WasInit" ; 1 if already initialized, 0 if not initialized.
+"TTF_FontFaceIsFixedWidth" ; >0 if font is a fixed width font. 0 if not a fixed width font.
+
+;; ** ttf / errors on 0
+
+(defl *return-0-on-failure/ttf*
+  "TTF_GlyphIsProvided" ; "0 for an undefined character code", not a bool-like, returns an index
+  )
+
+;; ** ttf / constant on failure
+
+(defparameter *return-constant-on-failure/ttf*
+  (mapcar (lambda (x) (list x 0)) *return-0-on-failure/ttf*))
+
+;; ** ttf / skip
+
+(defl *skip/ttf*
+  ;; don't need any processing for sure
+  "TTF_Linked_Version"
+  "TTF_FontFaces"
+  "TTF_FontLineSkip"
+  "TTF_FontDescent"
+  "TTF_FontAscent"
+  "TTF_FontHeight"
+  "TTF_GetFontHinting"
+  "TTF_GetFontOutline"
+  "TTF_GetFontStyle"
+  ;; not so sure about
+  "TTF_GetFontKerning" ; "0 if kerning is disabled" I guess a 0 could be useful in calculations as is, so no error? bool-like?
+  "TTF_FontFaceStyleName" ; The current style name of of the face of the font, or NULL perhaps.
+  "TTF_FontFaceFamilyName" ; like TTF_FontFaceStyleName
+  )
+
 ;; * all
 
-;; ** all / boolean (no errors)
+;; ** all / negative checks
 
-(defparameter *return-boolean-no-errors/all*
-  (check-repeats
-   (append *return-boolean-no-errors/core*)))
-
-;; ** all / boolean (with errors)
-
-(defparameter *return-boolean-check-errors/all*
-  (check-repeats
-   (append *return-boolean-check-errors/core*)))
+(defparameter *return-negative-on-failure/all*
+  (append *return-negative-on-failure/core*
+          *return-negative-on-failure/ttf*))
 
 ;; ** all / null returns
 
 (defparameter *return-null-on-failure/all*
-  (append *return-null-on-failure/core*))
+  (append *return-null-on-failure/core*
+          *return-null-on-failure/ttf*))
+
+;; ** all / void
+
+(defparameter *return-void/all*
+  (append *return-void/core*
+          *return-void/ttf*))
+
+;; ** all / boolean (no errors)
+
+(defparameter *return-boolean-no-errors/all*
+  (append *return-boolean-no-errors/core*))
+
+;; ** all / boolean (with errors)
+
+(defparameter *return-boolean-check-errors/all*
+  (append *return-boolean-check-errors/core*))
 
 ;; ** all / enum checks
 
@@ -626,33 +713,77 @@
   (append *return-enum-check-invalid/core*))
 
 (defparameter *return-enum-check-invalid-names/all*
-  (check-repeats
-   (mapcar #'first *return-enum-check-invalid/all*)))
+  (mapcar #'first *return-enum-check-invalid/all*))
 
 ;; ** all / constant checks
 
 (defparameter *return-constant-on-failure/all*
-  (append *return-constant-on-failure/core*))
+  (append *return-constant-on-failure/core*
+          *return-constant-on-failure/ttf*))
 
 (defparameter *return-constant-on-failure-names/all*
-  (check-repeats
-   (mapcar #'first *return-constant-on-failure/all*)))
+  (mapcar #'first *return-constant-on-failure/all*))
+
+;; ** all / skip
+
+(defparameter *skip/all*
+  (append *skip/core* *skip/ttf*))
 
 ;; * checks
 
 (progn
   (defparameter *all-conversion-lists*
-    (list *negative-returned-error-list/core*
-          *return-null-on-failure/core*
-          *return-boolean-no-errors/core*
-          *return-boolean-check-errors/core*
+    (list *return-negative-on-failure/all*
+          *return-null-on-failure/all*
+          *return-boolean-no-errors/all*
+          *return-boolean-check-errors/all*
           *return-enum-check-invalid-names/all*
           *return-constant-on-failure-names/all*
-          *return-void/core*
-          *skip/core*))
+          *return-void/all*
+          *skip/all*))
+  (check-repeats (apply #'append *all-conversion-lists*))
   (loop for x in *all-conversion-lists*
         do (loop for y in *all-conversion-lists*
                  when (not (eq x y))
                    do (assert (null (intersection x y :test #'equal)))))
   ;; total function count
   (reduce #'+ (mapcar #'length *all-conversion-lists*)))
+
+;; No varargs support.  And this is not at its best, you shouldn't have to
+;; specify any types yourself, but instead ask cffi what defcfun's arglist and
+;; types are.  But I don't know how to do that.
+(defmacro defun-with-passed-return-values (fn &rest desc)
+  "Define a fn* which calls fn, where * in DESC says to leave argument as is,
+and :typename says to pass a generated foreign object of the same type in its
+place and, after the function is called, return it as a value.  The order of the
+returned values is the same as they appear in the original arglist."
+  (let ((arglist (second (function-lambda-expression (fdefinition fn)))))
+    (print arglist)
+    (assert (eql (length desc) (length arglist)))
+    (loop for type-or-skip in desc
+          for argname in arglist
+          when (eql type-or-skip '*)
+            collect argname into new-arglist
+          when (keywordp type-or-skip)
+            collect (list argname type-or-skip) into foreign-objects
+          finally (return
+                    `(defun ,(symbolicate fn '*) ,new-arglist
+                       (cffi:with-foreign-objects ,foreign-objects
+                         (,fn ,@arglist)
+                         (values ,@(mapcar (lambda (x) `(cffi:mem-aref ,@x)) foreign-objects))))))))
+
+;; (hu.dwim.sdl/ttf:ttf-init)
+
+;; (defparameter font (hu.dwim.sdl/ttf:ttf-open-font "/usr/share/fonts/TTF/DejaVuSansMono-BoldOblique.ttf" 10))
+
+;; (hu.dwim.sdl/ttf:ttf-font-faces font)
+
+;; ;; TODO
+;; ;; "TTF_SizeUNICODE"
+;; ;; "TTF_SizeUTF8"
+;; (defun-with-passed-return-values hu.dwim.sdl/ttf:ttf-size-text * * :int :int)
+;; ;; (defun-with-passed-return-values hu.dwim.sdl/ttf:ttf-size- * * :int :int)
+
+;; (ttf-size-text* font "Hello World!")
+
+

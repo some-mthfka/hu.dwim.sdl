@@ -2,6 +2,8 @@
 
 ## Fork
 
+https://bugzilla.libsdl.org/show_bug.cgi?id=3219
+
 This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). These are the changes:
 
 - `hu.dwim.sdl.ffi`, where all the bindings lived, was replaced by several packages, one for each SDL2 library:

@@ -169,13 +169,33 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 
 ;; * Epilogue: unknown names warning
 
-;; these will show up in all sdl packages, filtering wouldn't hurt, but that's a bother
+(defun epilogue-unknown-names ()
+  (prog1 (when *unknown-names*
+           `(warn "The following functions are not specified in the type
+conversion lists, so automatic error signaling for them will not work, and the
+boolean values will not be automatically converted: ~a." ',*unknown-names*))
+    (setf *unknown-names* nil))) ; reset for the next package
+
+(defun epilogue-questionable-names ()
+  (prog1 (when *questionable-names*
+           `(warn "The following functions have questionable names, probably
+because they contain unknown abbreviations: ~a." ',*questionable-names*))
+    (setf *questionable-names* nil)))
+
+(defun prologue-from-core ()
+  (unless (eql *package* (find-package :hu.dwim.sdl/core))
+    `(do-symbols (symbol (find-package :hu.dwim.sdl/core))
+       ;; to avoid function-pointer error, or if anything else like that gets
+       ;; introduced before the prologue:
+       (unless (find-symbol (symbol-name symbol) *package*) 
+         (import symbol))))) 
+
+(defun prologue-callback (&key &allow-other-keys)
+  (remove nil (list (prologue-from-core))))
+
 (defun epilogue-callback (&key &allow-other-keys)
-  (list
-   `(when *unknown-names*
-      (warn "The following functions are not specified in the type conversion
-lists, so automatic error signaling for them will not work, and the boolean
-values will not be automatically converted: ~a." *unknown-names*))))
+  (remove nil (list (epilogue-unknown-names)
+                    (epilogue-questionable-names))))
 
 (defun callback-factory (&key &allow-other-keys)
-  (values nil #'epilogue-callback))
+  (values nil #'epilogue-callback #'prologue-callback))
