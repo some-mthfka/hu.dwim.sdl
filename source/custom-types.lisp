@@ -106,9 +106,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
     (actual-type custom-type original-function-name new-function-name condition-name)
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
      ;; Enumerations can either be signed or unsigned, shouldn't convert here
-     ;; probably.  And the actual type is an enum, which is nor right to convert
-     ;; to either (yields a symbol, I am not sure how that works exactly).
-     `(let ((return-value ,value)) ; (cffi:convert-from-foreign ,value ',',actual-type)
+     ;; probably.  And the actual type is an enum, which is not right to convert
+     ;; to either (yields a symbol).
+     `(let ((return-value ,value))
         (when (eql return-value
                    ;; bake the value of the constant right in here, not even the symbol:
                    ,,(symbolicate (ffi-name-transformer
@@ -119,7 +119,8 @@ so you will see the previous one: so make sure to keep everything cleaned."
           (error ',',condition-name
                  :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
                  :format-arguments (list (get+clear-sdl-error) ,',new-function-name
-                                         return-value ',',actual-type)))
+                                         (cffi:convert-from-foreign return-value ',',actual-type) ; enum symbol
+                                         ',',actual-type)))
         return-value)))
 
 (def-custom-type-setup-macro enum-checked)
