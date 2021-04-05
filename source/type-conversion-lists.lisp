@@ -32,11 +32,6 @@
 ;; And here's the search page: https://wiki.libsdl.org/FindPage
 ;; Below, I brace each query in slashes, don't put them in the actual search bar.
 
-;; Query: /"Returns SDL_TRUE on success, SDL_FALSE on error."/
-;; Date queried: 30 March 2021. 2 results.
-;; SDL_Vulkan_GetInstanceExtensions
-;; SDL_Vulkan_CreateSurface
-
 ;; ** core / negative return code is error
 
 (defl *return-negative-on-failure/core*
@@ -44,9 +39,6 @@
   ;; Date queried: 30 March 2021. 121 results.
   "SDL_CreateWindowAndRenderer"
   "SDL_VideoInit"
-  "SDL_JoystickIsHaptic"                ; boolean, negative on error TODO
-  "SDL_HapticRumbleSupported"           ; boolean, negative on error
-  "SDL_HapticEffectSupported"           ; boolean, negative on error
   "SDL_GL_SetAttribute"
   "SDL_SaveBMP"
   "SDL_RWclose"
@@ -98,7 +90,7 @@
   "SDL_RenderSetViewport"
   "SDL_RenderSetScale"
   "SDL_RenderSetLogicalSize"
-  "SDL_RenderSetIntegerScale" ; SDL_FALSE if not and on failure;
+  "SDL_RenderSetIntegerScale" ; Returns 0 on success or a negative error code on failure;
   "SDL_RenderSetClipRect"
   "SDL_RenderReadPixels"
   "SDL_RenderFillRects"
@@ -436,6 +428,25 @@
   "SDL_DXGIGetOutputInfo" ; Returns SDL_TRUE on success or SDL_FALSE on failure;
   "SDL_PixelFormatEnumToMasks") ; Returns SDL_TRUE on success or SDL_FALSE if the conversion wasn't possible;
 
+;; ** core / bool-like ints, 0 for false
+
+;; these return int or uint, but are bool-like, so let's track them seperately, just in case
+;; for now, they are simply merged with the sdl_bool list later on
+
+(defl *return-bool-like-0-for-false/core*
+  "SDL_JoystickGetButton" ; uint8, Returns 1 if the specified button is pressed, 0 otherwise.
+  "SDL_PollEvent" ; int, Returns 1 if there is a pending event or 0 if there are none available.
+  "SDL_MouseIsHaptic" ; int, Returns SDL_TRUE if the mouse is haptic or SDL_FALSE if it isn't.
+  )
+
+;; ** core / bool-like ints, negative on errors
+
+(defl *return-bool-like-0-for-false-negative-for-errors/core*
+  "SDL_JoystickIsHaptic"
+  "SDL_HapticRumbleSupported"
+  "SDL_HapticEffectSupported"
+  )
+
 ;; ** core / errors on 0
 
 (defl *return-0-on-failure/core*    ; checked all of these manually on wiki
@@ -555,17 +566,13 @@
   "SDL_AtomicAdd"
   "SDL_Error"                        ; internal use https://wiki.libsdl.org/ToDo
   "SDL_ReportAssertion"              ; internal use https://wiki.libsdl.org/ToDo
-  ;; these are bool-like, but since they return int, should probably stay that way in case SDL api extends on them
-  "SDL_EventState"                 ; uint8 Returns `SDL_DISABLE` or `SDL_ENABLE`
-  "SDL_JoystickGetButton" ; uint8, Returns 1 if the specified button is pressed, 0 otherwise.
-  "SDL_PollEvent" ; int, Returns 1 if there is a pending event or 0 if there are none available.
-  "SDL_MouseIsHaptic" ; int, Returns SDL_TRUE if the mouse is haptic or SDL_FALSE if it isn't.
+  "SDL_EventState"
   ;; no error checking needed, but I ain't that certain, or the wiki isn't
   "SDL_GetWindowData"
   "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
   "SDL_JoystickGetAxis" ; wat: Returns a 16-bit signed integer representing the current position of the axis or 0 on failure
   "SDL_GetRelativeMouseState"
-  "SDL_IsDeviceDisconnected"            ; wiki shows some gibberish
+  "SDL_IsDeviceDisconnected"            ; wiki shows some gibberish. probably negative on error
   "SDL_GetKeyFromScancode"
   "SDL_GetAudioStatus"                  ; wiki shows gibberish
   "SDL_GetAudioDeviceStatus"            ; wiki shows gibberish
@@ -601,11 +608,12 @@
 ;; ** ttf / negative return code is error
 
 (defl *return-negative-on-failure/ttf*
-  "TTF_Init" ; Returns: 0 on success, -1 on any error
+  "TTF_Init"                            ; Returns: 0 on success, -1 on any error
   "TTF_SizeUNICODE"
   "TTF_SizeUTF8"
   "TTF_SizeText"
-  "TTF_GlyphMetrics")
+  "TTF_GlyphMetrics"
+  "TTF_GetFontKerningSize")
 
 ;; ** ttf / null is error
 
@@ -641,11 +649,11 @@
   "TTF_SetFontStyle"
   "TTF_ByteSwappedUNICODE")
 
-;; ** ttf / bool-like ints
+;; ** ttf / bool-like ints, 0 for false
 
-;; TODO no errors, 0 means false
-"TTF_WasInit" ; 1 if already initialized, 0 if not initialized.
-"TTF_FontFaceIsFixedWidth" ; >0 if font is a fixed width font. 0 if not a fixed width font.
+(defl *return-bool-like-0-for-false/ttf*
+  "TTF_WasInit" ; 1 if already initialized, 0 if not initialized.
+  "TTF_FontFaceIsFixedWidth") ; >0 if font is a fixed width font. 0 if not a fixed width font
 
 ;; ** ttf / errors on 0
 
@@ -797,17 +805,17 @@
   "gfxPrimitivesSetFontRotation"
   "gfxPrimitivesSetFont")
 
-;; ** gfx / bool-like ints
+;; ** gfx / bool-like ints, 0 for false
 
-;; bool like (false on 0), no errors
-"SDL_imageFilterMMXdetect" ; 1 of MMX was detected, 0 otherwise.
+(defl *return-bool-like-0-for-false/gfx*
+  "SDL_imageFilterMMXdetect") ; 1 of MMX was detected, 0 otherwise.
 
 ;; ** gfx / skip
 
 (defl *skip/gfx*
   "SDL_framerateDelay")
 
-;; * SDL IMAGE
+;; * SDL Image
 
 ;; https://www.libsdl.org/projects/SDL_image/docs/SDL_image.html
 
@@ -845,10 +853,11 @@
   "IMG_LoadTexture_RW"
   "IMG_LoadTexture")
 
-;; ** image / bool-like ints
+;; ** image / bool-like ints, 0 for false
 
 ;; bool-like ints, 0 for false, 1 for true, not errors
-'("IMG_isBMP"
+(defl *return-bool-like-0-for-false/image*
+  "IMG_isBMP"
   "IMG_isCUR"
   "IMG_isGIF"
   "IMG_isICO"
@@ -901,15 +910,29 @@
           *return-void/gfx*
           *return-void/image*))
 
+;; ** all / bool-like 0 for false
+
+(defparameter *return-bool-like-0-for-false/all*
+  (append *return-bool-like-0-for-false/core*
+          *return-bool-like-0-for-false/gfx*
+          *return-bool-like-0-for-false/ttf*
+          *return-bool-like-0-for-false/image*))
+
 ;; ** all / boolean (no errors)
 
 (defparameter *return-boolean-no-errors/all*
-  (append *return-boolean-no-errors/core*))
+  (append *return-boolean-no-errors/core*
+          *return-bool-like-0-for-false/all*))
 
 ;; ** all / boolean (with errors)
 
 (defparameter *return-boolean-check-errors/all*
   (append *return-boolean-check-errors/core*))
+
+;; ** all / bool-like ints, negative on errors
+
+(defparameter *return-bool-like-0-for-false-negative-for-errors/all*
+  (append *return-bool-like-0-for-false-negative-for-errors/core*))
 
 ;; ** all / enum checks
 
@@ -941,6 +964,7 @@
           *return-null-on-failure/all*
           *return-boolean-no-errors/all*
           *return-boolean-check-errors/all*
+          *return-bool-like-0-for-false-negative-for-errors/all*
           *return-enum-check-invalid-names/all*
           *return-constant-on-failure-names/all*
           *return-void/all*

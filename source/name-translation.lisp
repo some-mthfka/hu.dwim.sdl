@@ -187,11 +187,12 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 
 (defun prologue-from-core ()
   (unless (eql *package* (find-package :hu.dwim.sdl/core))
-    `(do-symbols (symbol (find-package :hu.dwim.sdl/core))
-       ;; to avoid function-pointer error, or if anything else like that gets
-       ;; introduced before the prologue:
-       (unless (find-symbol (symbol-name symbol) *package*) 
-         (import symbol))))) 
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (do-symbols (symbol (find-package :hu.dwim.sdl/core))
+         ;; to avoid function-pointer error, or if anything else like that gets
+         ;; introduced before the prologue:
+         (unless (find-symbol (symbol-name symbol) *package*) 
+           (import symbol)))))) 
 
 (defun prologue-callback (&key &allow-other-keys)
   (remove nil (list (prologue-from-core))))

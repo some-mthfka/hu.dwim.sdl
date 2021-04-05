@@ -132,11 +132,13 @@ so you will see the previous one: so make sure to keep everything cleaned."
 (hu.dwim.sdl/core:sdl-get-window-id (cffi:null-pointer))
 #+nil
 (hu.dwim.sdl/core:sdl-tls-create) ; works
+#+nil
+(hu.dwim.sdl/ttf:ttf-was-init)
 
 (defun generate-type-expand-defmethod/constant-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
-     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type))) ; 
+     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type))) ; constants may be of any time
         (when (eql return-value
                    ;; bake in the value of the constant:
                    ,,(second (assoc original-function-name
@@ -160,9 +162,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
 (defun generate-type-expand-defmethod/negative-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
   (declare (ignore original-function-name))
-  ;; NOTE: strictly speaking it should be (cffi:convert-from-foreign ,value :int), but not in this case.
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
-     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type)))
+     ;; NOTE: strictly speaking it should be (cffi:convert-from-foreign ,value :int), but not in this case.
+     `(let ((return-value ,value))
         (when (< return-value 0)
           (error ',',condition-name
                  :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
@@ -185,7 +187,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
     (actual-type custom-type original-function-name new-function-name condition-name)
   (declare (ignore actual-type original-function-name new-function-name condition-name))
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
-     `(eql ,value hu.dwim.sdl/core::+true+)))
+     `(not (eql ,value 0)))) ; we check non SDL_bools here as well, so can't simply use +true+
 
 (def-custom-type-setup-macro bool-conversion nil)
 
@@ -200,29 +202,40 @@ so you will see the previous one: so make sure to keep everything cleaned."
     (actual-type custom-type original-function-name new-function-name condition-name)
   (declare (ignore original-function-name))
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
-     `(let ((return-value ,value))
-        (when (eql return-value hu.dwim.sdl/core::+false+)
+     `(let ((return-value (not (eql ,value 0)))) ; SDL_FALSE is 0 in the sources
+        (unless return-value 
           (error ',',condition-name
                  :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
                  :format-arguments (list (get+clear-sdl-error) ,',new-function-name
                                          return-value ',',actual-type)))
-        t))) ; assumes +TRUE+ is the only other option besides +FALSE+
+        return-value)))
 
 (def-custom-type-setup-macro checked-bool-conversion)
 
 (def-type-conversion-processor checked-bool-conversion)
 
+;; ** bool-like integers with conversion and negative return on errors
+
+#+nil
+(hu.dwim.sdl/core:sdl-joystick-is-haptic (cffi:null-pointer))
+
+(defun generate-type-expand-defmethod/checked-bool-like-negative-failure
+    (actual-type custom-type original-function-name new-function-name condition-name)
+  (declare (ignore original-function-name))
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(let ((return-value ,value)) ; conversion is probably not necessary
+        (when (< return-value 0)
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
+                 :format-arguments (list (get+clear-sdl-error) ,',new-function-name
+                                         return-value ',',actual-type)))
+        (not (eql return-value 0)))))
+
+(def-custom-type-setup-macro checked-bool-like-negative-failure)
+
+(def-type-conversion-processor checked-bool-like-negative-failure)
+
 ;; * type transformer
-
-(defparameter *string-thing* nil)
-(defparameter *bool-thing* nil)
-(defparameter *void-thing* nil)
-(defparameter *bool-thing2* nil) ; SDL_BOOL
-(defparameter *negative-error-types* nil) ;  => (SDL-JOYSTICK-ID SDL-AUDIO-DEVICE-ID :INT)
-
-(defparameter *null-checked-function-info* nil)
-
-(defparameter *custom-type-code* nil)
 
 (defun ffi-type-transformer (type-specifier context &rest args &key &allow-other-keys)
   (let ((type-specifier (apply 'cffi/c2ffi:default-ffi-type-transformer
@@ -230,9 +243,8 @@ so you will see the previous one: so make sure to keep everything cleaned."
         (name (when (consp context) (second context))))
     (when (and (eql (first context) :function)
                (eql (third context) :return-type))
-      (catch-unknown-names name)
-      (when (eql type-specifier :void) ;; TODO remove
-        (push name *void-thing*)))
+      ;; (when (eql type-specifier :void) (push name *void-stuff*))
+      (catch-unknown-names name))
     (flet ((convert-p (conversion-list &optional &key (check-type nil) (key #'identity))
              (when (and name
                         (eql (first context) :function)
@@ -253,4 +265,6 @@ so you will see the previous one: so make sure to keep everything cleaned."
          (process/bool-conversion name type-specifier))
         ((convert-p *return-boolean-check-errors/all*)
          (process/checked-bool-conversion name type-specifier))
+        ((convert-p *return-bool-like-0-for-false-negative-for-errors/all*)
+         (process/checked-bool-like-negative-failure name type-specifier))
         (t type-specifier)))))
