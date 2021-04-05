@@ -173,13 +173,16 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   (prog1 (when *unknown-names*
            `(warn "The following functions are not specified in the type
 conversion lists, so automatic error signaling for them will not work, and the
-boolean values will not be automatically converted: ~a." ',*unknown-names*))
+boolean values will not be automatically converted.  File an issue or add them
+to the conversion lists yourself (and don't forget to remove the generated files
+manually): ~a." ',*unknown-names*))
     (setf *unknown-names* nil))) ; reset for the next package
 
 (defun epilogue-questionable-names ()
   (prog1 (when *questionable-names*
            `(warn "The following functions have questionable names, probably
-because they contain unknown abbreviations: ~a." ',*questionable-names*))
+because they contain unknown abbreviations.  File an issue or add exceptions to
+`catch-questionable-names': ~a." ',*questionable-names*))
     (setf *questionable-names* nil)))
 
 (defun prologue-from-core ()

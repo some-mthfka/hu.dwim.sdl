@@ -807,6 +807,74 @@
 (defl *skip/gfx*
   "SDL_framerateDelay")
 
+;; * SDL IMAGE
+
+;; https://www.libsdl.org/projects/SDL_image/docs/SDL_image.html
+
+;; ** image / negative return code is error
+
+(defl *return-negative-on-failure/image*
+  ;; these weren't in the docs, the sources have -1 on error
+  "IMG_SavePNG_RW"
+  "IMG_SavePNG")
+
+;; ** image / null is error
+
+(defl *return-null-on-failure/image*
+  "IMG_Load"
+  "IMG_Load_RW"
+  "IMG_LoadTyped_RW"
+  "IMG_LoadBMP_RW"
+  "IMG_LoadCUR_RW"
+  "IMG_LoadGIF_RW"
+  "IMG_LoadICO_RW"
+  "IMG_LoadJPG_RW"
+  "IMG_LoadLBM_RW"
+  "IMG_LoadPCX_RW"
+  "IMG_LoadPNG_RW"
+  "IMG_LoadPNM_RW"
+  "IMG_LoadTGA_RW"
+  "IMG_LoadTIF_RW"
+  "IMG_LoadXCF_RW"
+  "IMG_LoadXPM_RW"
+  "IMG_LoadXV_RW"
+  "IMG_ReadXPMFromArray"
+  ;; these weren't in the docs, assuming the same:
+  "IMG_LoadWEBP_RW"
+  "IMG_LoadTextureTyped_RW"
+  "IMG_LoadTexture_RW"
+  "IMG_LoadTexture")
+
+;; ** image / bool-like ints
+
+;; bool-like ints, 0 for false, 1 for true, not errors
+'("IMG_isBMP"
+  "IMG_isCUR"
+  "IMG_isGIF"
+  "IMG_isICO"
+  "IMG_isJPG"
+  "IMG_isLBM"
+  "IMG_isPCX"
+  "IMG_isPNG"
+  "IMG_isPNM"
+  "IMG_isTIF"
+  "IMG_isXCF"
+  "IMG_isXPM"
+  "IMG_isXV"
+  "IMG_isWEBP")
+
+;; ** image / void
+
+(defl *return-void/image*
+  "IMG_Quit")
+
+;; ** image / skip
+
+(defl *skip/image*
+  ;; not in the docs, looked these up in the sources, not surprises here 
+  "IMG_Init" 
+  "IMG_Linked_Version")
+
 ;; * all
 
 ;; ** all / negative checks
@@ -814,21 +882,24 @@
 (defparameter *return-negative-on-failure/all*
   (append *return-negative-on-failure/core*
           *return-negative-on-failure/ttf*
-          *return-negative-on-failure/gfx*))
+          *return-negative-on-failure/gfx*
+          *return-negative-on-failure/image*))
 
 ;; ** all / null returns
 
 (defparameter *return-null-on-failure/all*
   (append *return-null-on-failure/core*
           *return-null-on-failure/ttf*
-          *return-null-on-failure/gfx*))
+          *return-null-on-failure/gfx*
+          *return-null-on-failure/image*))
 
 ;; ** all / void
 
 (defparameter *return-void/all*
   (append *return-void/core*
           *return-void/ttf*
-          *return-void/gfx*))
+          *return-void/gfx*
+          *return-void/image*))
 
 ;; ** all / boolean (no errors)
 
@@ -860,7 +931,7 @@
 ;; ** all / skip
 
 (defparameter *skip/all*
-  (append *skip/core* *skip/ttf* *skip/gfx*))
+  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image*))
 
 ;; * checks
 
