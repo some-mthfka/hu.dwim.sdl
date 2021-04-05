@@ -677,25 +677,158 @@
   "TTF_FontFaceFamilyName" ; like TTF_FontFaceStyleName
   )
 
+;; * SDL GFX
+
+;; https://www.ferzkopp.net/Software/SDL2_gfx/Docs/html/index.html
+
+;; ** gfx / negative return code is error
+
+(defl *return-negative-on-failure/gfx*
+  ;; primitives, all return -1 on failure
+  "pixelColor"
+  "pixelRGBA"
+  "hlineColor"
+  "hlineRGBA"
+  "vlineColor"
+  "vlineRGBA"
+  "rectangleColor"
+  "rectangleRGBA"
+  "roundedRectangleColor"
+  "roundedRectangleRGBA"
+  "boxColor"
+  "boxRGBA"
+  "roundedBoxColor"
+  "roundedBoxRGBA"
+  "lineColor"
+  "lineRGBA"
+  "aalineColor"
+  "aalineRGBA"
+  "thickLineColor"
+  "thickLineRGBA"
+  "circleColor"
+  "circleRGBA"
+  "arcColor"
+  "arcRGBA"
+  "aacircleColor"
+  "aacircleRGBA"
+  "filledCircleColor"
+  "filledCircleRGBA"
+  "ellipseColor"
+  "ellipseRGBA"
+  "aaellipseColor"
+  "aaellipseRGBA"
+  "filledEllipseColor"
+  "filledEllipseRGBA"
+  "pieColor"
+  "pieRGBA"
+  "filledPieColor"
+  "filledPieRGBA"
+  "trigonColor"
+  "trigonRGBA"
+  "aatrigonColor"
+  "aatrigonRGBA"
+  "filledTrigonColor"
+  "filledTrigonRGBA"
+  "polygonColor"
+  "polygonRGBA"
+  "aapolygonColor"
+  "aapolygonRGBA"
+  "filledPolygonColor"
+  "filledPolygonRGBA"
+  "texturedPolygon"
+  "bezierColor"
+  "bezierRGBA"
+  "characterColor"
+  "characterRGBA"
+  "stringColor"
+  "stringRGBA"
+  ;; framerate
+  "SDL_getFramerate"
+  "SDL_getFramecount"
+  "SDL_setFramerate"
+  ;; image filter
+  "SDL_imageFilterAdd"
+  "SDL_imageFilterMean"
+  "SDL_imageFilterSub"
+  "SDL_imageFilterAbsDiff"
+  "SDL_imageFilterMult"
+  "SDL_imageFilterMultNor"
+  "SDL_imageFilterMultDivby2"
+  "SDL_imageFilterMultDivby4"
+  "SDL_imageFilterBitAnd"
+  "SDL_imageFilterBitOr"
+  "SDL_imageFilterDiv"
+  "SDL_imageFilterBitNegation"
+  "SDL_imageFilterAddByte"
+  "SDL_imageFilterAddUint"
+  "SDL_imageFilterAddByteToHalf"
+  "SDL_imageFilterSubByte"
+  "SDL_imageFilterSubUint"
+  "SDL_imageFilterShiftRight"
+  "SDL_imageFilterShiftRightUint"
+  "SDL_imageFilterMultByByte"
+  "SDL_imageFilterShiftRightAndMultByByte"
+  "SDL_imageFilterShiftLeftByte"
+  "SDL_imageFilterShiftLeftUint"
+  "SDL_imageFilterShiftLeft"
+  "SDL_imageFilterBinarizeUsingThreshold"
+  "SDL_imageFilterClipToRange"
+  "SDL_imageFilterNormalizeLinear")
+
+;; ** gfx / null is error
+
+(defl *return-null-on-failure/gfx*
+  "shrinkSurface"
+  "rotateSurface90Degrees"
+  ;; these return new surfaces and don't explicitly state NULL on errors, let it be this way in case of changes:
+  "zoomSurface"
+  "rotozoomSurface" 
+  "rotozoomSurfaceXY")
+
+;; ** gfx / void
+
+(defl *return-void/gfx*
+  "zoomSurfaceSize"
+  "rotozoomSurfaceSizeXY"
+  "rotozoomSurfaceSize"
+  "SDL_imageFilterMMXon"
+  "SDL_imageFilterMMXoff"
+  "SDL_initFramerate"
+  "gfxPrimitivesSetFontRotation"
+  "gfxPrimitivesSetFont")
+
+;; ** gfx / bool-like ints
+
+;; bool like (false on 0), no errors
+"SDL_imageFilterMMXdetect" ; 1 of MMX was detected, 0 otherwise.
+
+;; ** gfx / skip
+
+(defl *skip/gfx*
+  "SDL_framerateDelay")
+
 ;; * all
 
 ;; ** all / negative checks
 
 (defparameter *return-negative-on-failure/all*
   (append *return-negative-on-failure/core*
-          *return-negative-on-failure/ttf*))
+          *return-negative-on-failure/ttf*
+          *return-negative-on-failure/gfx*))
 
 ;; ** all / null returns
 
 (defparameter *return-null-on-failure/all*
   (append *return-null-on-failure/core*
-          *return-null-on-failure/ttf*))
+          *return-null-on-failure/ttf*
+          *return-null-on-failure/gfx*))
 
 ;; ** all / void
 
 (defparameter *return-void/all*
   (append *return-void/core*
-          *return-void/ttf*))
+          *return-void/ttf*
+          *return-void/gfx*))
 
 ;; ** all / boolean (no errors)
 
@@ -727,7 +860,7 @@
 ;; ** all / skip
 
 (defparameter *skip/all*
-  (append *skip/core* *skip/ttf*))
+  (append *skip/core* *skip/ttf* *skip/gfx*))
 
 ;; * checks
 
