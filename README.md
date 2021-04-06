@@ -2,7 +2,8 @@
 
 ## Fork
 
-This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). The details are in the subsections below, but here's the summary:
+This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). The
+details are in the subsections below, but here's the summary:
 
 - `hu.dwim.sdl.ffi` was removed in favour of seperate packages, one for each sdl module.
 - Everything is now exported in the generated files.
@@ -11,7 +12,8 @@ This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). The det
 
 New dependencies: `cl-ppcre` for regexps and `parachute` for some tests.
 
-Also, now, the generated files call stuff from the `hu.dwim.sdl` package. I don't think this to be a big deal, though.
+Also, now, the generated files call stuff from the `hu.dwim.sdl` package. I
+don't think this to be a big deal, though.
 
 ### Packages
 
@@ -22,7 +24,9 @@ Also, now, the generated files call stuff from the `hu.dwim.sdl` package. I don'
  
 ### Naming
 
-Instead of `|SDL_Init|` you now simply write `sdl-init`.  See `ffi-name-transformer` in [](source/ffi_prelude.lisp) for details, but basically: 
+Instead of `|SDL_Init|` you now simply write `sdl:init`.  See
+`ffi-name-transformer` in [name-translation](source/name-translation.lisp) for details, but
+basically:
   - all underscores are replaced with dashes; 
   - camel case is converted to dashes; 
   - Abbreviations are treated nicely (such as `GL`, `GUID`, `RGBA` etc.);
@@ -58,7 +62,7 @@ becomes simply
 (ttf-size-text* font text)
 ```
 
-There's a macro in [](source/extra-bits.lisp) that makes it easy enough to do:
+There's a macro in [extra-bits](source/extra-bits.lisp) that makes it easy enough to do:
 
 ```
 (defun-with-passed-return-values ttf-size-text * * :int :int)
@@ -67,23 +71,23 @@ There's a macro in [](source/extra-bits.lisp) that makes it easy enough to do:
 But these have to be specified by hand, and the types do too (they shouldn't
 really have to be, but I don't know how to get this info from cffi).
 
-You can find/add these definitions in [](source/core-extras.lisp) /
-[](source/ttf-extras.lisp) etc. The function is exported too, along with it's
+You can find/add these definitions in [core-extras](source/core-extras.lisp) /
+[ttf-extras](source/ttf-extras.lisp) etc. The function is exported too, along with it's
 multiple variant, but the idea is to add these definitions to this codebase.
  
 Note that the resulting definitions end up in the same package as the original function.
 
-##### `<function-name>*gc
+##### `<function-name>*gc`
 
 For the garbage collected version of a function. There aren't any GC additions
 so far, though. But I think they should be named seperately to avoid any
 overhead for those who don't want it.
 
-##### TODO `%<original-function-name>`
+##### **TODO** `%<original-function-name>`
 
 It wouldn't be bad if CFFI could generate multiple functions per one C function,
 or even simply give an option to include the original unmodified function but
-with a custom name e.g. `sdl-init` and `%sdl-init`. This could be useful when
+with a custom name e.g. `sdl:init` and `%sdl:init`. This could be useful when
 one doesn't want the overhead of conversion or error checking.
 
 ### Automatic Conversion and Error checking of Return Values
@@ -129,7 +133,8 @@ name>/<expansion procedure>/<actual type>`. It will be clear from the
 really have to know or care about this long type name, the actual type should be
 enough.
 
-Another way is to go to [](source/type-conversion-lists.lisp) and see for yourself.
+Another way is to go to
+[type-conversion-lists](source/type-conversion-lists.lisp) and see for yourself.
  
 I skipped _most_ of the functions listed at https://wiki.libsdl.org/ToDo, which
 includes C function wrappers/equivalents (e.g. `SDL_sscanf`). Some functions I
@@ -141,9 +146,9 @@ Also, `SDL_DequeueAudio` and `SDL_RWwrite` are exceptions: the user passes a
 number and they return another number, and if the number returned is less than
 the one passed, that's an error and the user calls `SDL_GetError`. I don't think
 C2FFI supports this case. Anyway, I redefined these manually with error checks
-in [](core-extras.lisp). I haven't tested them and, in fact, the current specs
-are out of date and don't have them at all. Unmodified versions prefixed with %
-should be available for these.
+in [core-extras](core-extras.lisp). I haven't tested them and, in fact, the
+current specs are out of date and don't have them at all. Unmodified versions
+prefixed with % should be available for these.
 
 **There are many functions, some were picked with regexps, others were picked by
 hand, some could've been misjudged: there could have been errors. If something
@@ -156,7 +161,8 @@ those functions have unknown abbreviations, you will be told about that as well.
 
 ### Example
 
-The following example opens a window and shows a rectangle and then, after two seconds, closes the window.
+The following example opens a window and shows a rectangle and then, after two
+seconds, closes the window.
  
 ``` 
 (defpackage #:sdl2-example
@@ -196,7 +202,7 @@ The following example opens a window and shows a rectangle and then, after two s
   (sdl:quit))
 ```
 
-TODO Is there a way to generate annotated struct makers that would show the
+**TODO** Is there a way to generate annotated struct makers that would show the
 actual fields in the docstring? That would require the means of getting the
 fields of a given struct (if one had to generate these manually).
 
