@@ -22,10 +22,14 @@
                (:file "custom-types"
                 :pathname "source/custom-types"
                 :depends-on ("name-translation"))
+               (:file "extra-bits"
+                :pathname "source/extra-bits"
+                :depends-on ("custom-types"))
                (:module "source"
                 :depends-on ("c2ffi-spec" "package-stage-1")
                 :serial t
-                :components ((:file "package-stage-2")
+                :components ((:file "core-extras")
+                             (:file "package-stage-2")
                              (:file "package-stage-3")
                              (:file "sdl")))
                (:module "c2ffi-spec"
@@ -107,7 +111,11 @@
                :cffi/c2ffi
                :cffi-libffi
                :hu.dwim.sdl)
-  :components ((:module "c2ffi-spec"
+  :components ((:module "source"
+                :depends-on ("c2ffi-spec")
+                :serial t
+                :components ((:file "ttf-extras")))
+               (:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-ttf.h"
                               :package #:hu.dwim.sdl/ttf
                               :callback-factory "hu.dwim.sdl::callback-factory"

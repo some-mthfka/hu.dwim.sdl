@@ -22,7 +22,7 @@
 (defmacro defl (name &rest rest)
   `(defparameter ,name (check-repeats (list ,@rest))))
 
-;; * SDL Core (ONLY)
+;; * SDL Core
 
 ;; ** Commentary
 
@@ -210,7 +210,7 @@
   "SDL_RenderCopyF"
   "SDL_RenderCopyExF"
   "SDL_PeepEvents"
-  "SDL_NumSensors"       ; wiki says nothing, but this can't be negative, right?
+  "SDL_NumSensors"       ; int, wiki says nothing, but this can't be negative, right?
   "SDL_NumHaptics"
   "SDL_JoystickNumBalls"
   "SDL_GetNumTouchDevices"
@@ -317,7 +317,10 @@
   "SDL_GameControllerName"
   "SDL_GameControllerGetStringForButton"
   "SDL_GameControllerGetStringForAxis"
-  "SDL_AndroidGetActivity")
+  "SDL_AndroidGetActivity"
+  "SDL_GetWindowData" ; the sources indicate this that NULL is an error (when name is not found or NULL)
+  "SDL_GameControllerGetJoystick" ; wiki unclear, sources: return NULL when the controller is NULL
+  )
 
 ;; ** core / void
 
@@ -385,7 +388,7 @@
   "SDL_IsTextInputActive"
   "SDL_IsScreenKeyboardShown"
   "SDL_IsScreenSaverEnabled"
-  "SDL_IsGameController" ; SDL_FALSE if it isn't or it's an invalid index.
+  "SDL_IsGameController"       ; SDL_FALSE if it isn't or it's an invalid index.
   "SDL_GameControllerGetAttached"
   "SDL_QuitRequested"
   "SDL_PointInRect"
@@ -410,9 +413,10 @@
   ;; These ones give extra info with SDL_Error, but I guess they shouldn't
   ;; throw a condition, so they are a part of this list.
   ;; checked all of these manually on wiki:
-  "SDL_JoystickGetAttached" ; call SDL_GetError() for more information.
+  "SDL_JoystickGetAttached"          ; call SDL_GetError() for more information.
   "SDL_RenderIsClipEnabled" ; SDL_TRUE if clipping is enabled or SDL_FALSE if not; call SDL_GetError() for more information.
   "SDL_RenderGetIntegerScale" ; "SDL_TRUE if integer scales are forced or SDL_FALSE if not and on failure"
+  "SDL_IsDevicePresent" ; looked this up in the sources, wiki has nothing on it
   )
 
 ;; ** core / boolean check errors (on SDL_FALSE)
@@ -435,8 +439,10 @@
 
 (defl *return-bool-like-0-for-false/core*
   "SDL_JoystickGetButton" ; uint8, Returns 1 if the specified button is pressed, 0 otherwise.
+  "SDL_GameControllerGetButton" ; returns SDL_RELEASED (0) when unpressed
   "SDL_PollEvent" ; int, Returns 1 if there is a pending event or 0 if there are none available.
   "SDL_MouseIsHaptic" ; int, Returns SDL_TRUE if the mouse is haptic or SDL_FALSE if it isn't.
+  "SDL_HapticOpened" ; Returns 1 if it has been opened, 0 if it hasn't or on failure;
   )
 
 ;; ** core / bool-like ints, negative on errors
@@ -449,7 +455,7 @@
 
 ;; ** core / errors on 0
 
-(defl *return-0-on-failure/core*    ; checked all of these manually on wiki
+(defl *return-0-on-failure/core*       ; checked all of these manually on wiki
   ;; checked all of these manually on wiki:
   "SDL_SaveDollarTemplate"
   "SDL_RecordGesture"
@@ -471,26 +477,36 @@
   "SDL_HapticQuery" ; Returns a list of supported haptic features in bitwise manner (OR'd), or 0 on failure; 
   "SDL_GetWindowID"
   "SDL_GetTouchDevice"
-  "SDL_GameControllerGetButton" ; returns SDL_RELEASED when unpressed, not 0 like wiki says
   "SDL_AndroidGetJNIEnv"
   "SDL_AndroidGetExternalStorageState"
-  "SDL_AddTimer")
+  "SDL_AddTimer"
+  "SDL_GetKeyFromScancode" ; sources indicate that if scancode is not found, 0 is returned and error is set
+  )
+
+;; ** core / string starts with error
+
+(defparameter *return-string-on-failure/core*
+  '(("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
+    ("SDL_GetPlatform" "Unknown") ; If the correct platform name is not available, returns a string beginning with the text "Unknown".
+    )) ; "SDL_PIXELFORMAT_UNKNOWN" (string) if the format isn't recognized
 
 ;; ** core / return enum error check
 
 (defparameter *return-enum-check-invalid/core*
-  '(("SDL_SensorGetType" "SDL_SENSOR_INVALID")
-    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID")
-    ("SDL_GetPixelFormatName" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN")
-    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN")
-    ("SDL_GetKeyFromName" "SDLK_UNKNOWN")
-    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN")
+  '(("SDL_SensorGetType" "SDL_SENSOR_INVALID") ; "`SDL_SENSOR_INVALID` if `sensor` is NULL."
+    ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID") ; "if `device_index` is out of range."
+    ;; for the following two, also see "SDL_GetPixelFormatName":
+    ("SDL_GetWindowPixelFormat" "SDL_PIXELFORMAT_UNKNOWN") ; call SDL_GetError() for more information.
+    ("SDL_MasksToPixelFormatEnum" "SDL_PIXELFORMAT_UNKNOWN") ; "if the conversion wasn't possible."
+    ("SDL_GetScancodeFromName" "SDL_SCANCODE_UNKNOWN") ; "if the name wasn't recognized; call SDL_GetError()"
+    ("SDL_GetKeyFromName" "SDLK_UNKNOWN")              ; for more information. 
+    ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN") ; a bit questionable that this should be here really
+    ;; "On failure (like the given Controller axis doesn't exist on the device) [...] SDL_CONTROLLER_BINDTYPE_NONE"
     ;; ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
     ;; ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
-    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID")
-    ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID")))
+    ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID") ; "if no match was found."
+    ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID") ; "if no match was found."
+    ))
 
 ;; ** core / return constants indicating errors
 
@@ -502,10 +518,11 @@
 
 ;; ** core / skip
 
+;; Some things on this list are commented so that the user gets a warning about them.
 (defl *skip/core*                       ; checked all of these manually on wiki
   ;; requires a manual check
-  "SDL_RWwrite" ; Returns the number of objects written, which will be less than **num** on error
-  "SDL_DequeueAudio" ; Returns number of bytes dequeued, which could be less than requested; call SDL_GetError()
+  "SDL_RWwrite" ; See README Returns the number of objects written, which will be less than **num** on error
+  "SDL_DequeueAudio" ; See README, Returns number of bytes dequeued, which could be less than requested; call SDL_GetError()
   ;; low-level stuff
   "SDL_SwapLE64" "SDL_SwapLE32" "SDL_SwapLE16" "SDL_SwapFloatLE"
   "SDL_SwapFloatBE" "SDL_SwapFloat" "SDL_SwapBE64" "SDL_SwapBE32" "SDL_SwapBE16"
@@ -567,23 +584,17 @@
   "SDL_Error"                        ; internal use https://wiki.libsdl.org/ToDo
   "SDL_ReportAssertion"              ; internal use https://wiki.libsdl.org/ToDo
   "SDL_EventState"
-  ;; no error checking needed, but I ain't that certain, or the wiki isn't
-  "SDL_GetWindowData"
-  "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
-  "SDL_JoystickGetAxis" ; wat: Returns a 16-bit signed integer representing the current position of the axis or 0 on failure
-  "SDL_GetRelativeMouseState"
-  "SDL_IsDeviceDisconnected"            ; wiki shows some gibberish. probably negative on error
-  "SDL_GetKeyFromScancode"
-  "SDL_GetAudioStatus"                  ; wiki shows gibberish
+  "SDL_GL_GetProcAddress" ; "Some drivers return NULL if a function isn't supported, but you can't count on this behavior."
+  "SDL_GL_GetSwapInterval" ; "If [...] can't determine [...] isn't a valid current context [...] return 0 as a safe default."
+  "SDL_GetRelativeMouseState" ; wiki says nothing about errors, sources have no error handling
+  "SDL_GetAudioStatus" ; wiki shows gibberish, sources: returns enum, no error checks
   "SDL_GetAudioDeviceStatus"            ; wiki shows gibberish
-  "SDL_GameControllerGetJoystick" ; wiki unclear: Returns a SDL_Joystick object; call SDL_GetError() for more information.
-  "SDL_ComposeCustomBlendMode"    ; no checks apparently
-  ;; don't know about these, but probably better leave unchecked
-  "SDL_HapticOpened" ; Returns 1 if it has been opened, 0 if it hasn't or on failure;
-  "SDL_GetQueuedAudioSize" ; uint32 Returns the number of bytes (not samples!) of queued audio.
-  "SDL_GetPlatform" ; If the correct platform name is not available, returns a string beginning with the text "Unknown".
-  "SDL_GL_GetSwapInterval"
-  "SDL_GL_GetProcAddress"
+  "SDL_ComposeCustomBlendMode"    ; no checks apparently, sources indicate so too
+  "SDL_JoystickGetAxis" ; Returns a 16-bit signed integer representing the current position of the axis or 0 on failure
+  "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
+  ;; no error checking needed, but I ain't that certain, or the wiki isn't
+  "SDL_GetQueuedAudioSize" ; uint32 Returns 0 by default or if device not found, but the size can be 0 too, couldn't it?
+  ;; "SDL_IsDeviceDisconnected" ; wiki shows gibberish, can't find the source definition for this, see SDL_IsDevicePresent
   ;; well, imma just ignore these, alright? also see https://wiki.libsdl.org/ToDo
   ;; some of these do their own arithmetic reporting
   "SDL_iconv_string" "SDL_iconv" "SDL_iconv_close" "SDL_iconv_open" "SDL_sqrt"
@@ -681,7 +692,7 @@
   "TTF_GetFontStyle"
   ;; not so sure about
   "TTF_GetFontKerning" ; "0 if kerning is disabled" I guess a 0 could be useful in calculations as is, so no error? bool-like?
-  "TTF_FontFaceStyleName" ; The current style name of of the face of the font, or NULL perhaps.
+  "TTF_FontFaceStyleName" ; The current style name of the face of the font, or NULL perhaps.
   "TTF_FontFaceFamilyName" ; like TTF_FontFaceStyleName
   )
 
@@ -880,7 +891,7 @@
 ;; ** image / skip
 
 (defl *skip/image*
-  ;; not in the docs, looked these up in the sources, not surprises here 
+  ;; not in the docs, looked these up in the sources, no surprises here 
   "IMG_Init" 
   "IMG_Linked_Version")
 
@@ -934,6 +945,14 @@
 (defparameter *return-bool-like-0-for-false-negative-for-errors/all*
   (append *return-bool-like-0-for-false-negative-for-errors/core*))
 
+;; ** all / string starts with error checks
+
+(defparameter *return-string-on-failure/all*
+  (append *return-string-on-failure/core*))
+
+(defparameter *return-string-on-failure-names/all*
+  (mapcar #'first *return-string-on-failure/all*))
+
 ;; ** all / enum checks
 
 (defparameter *return-enum-check-invalid/all*
@@ -965,6 +984,7 @@
           *return-boolean-no-errors/all*
           *return-boolean-check-errors/all*
           *return-bool-like-0-for-false-negative-for-errors/all*
+          *return-string-on-failure-names/all*
           *return-enum-check-invalid-names/all*
           *return-constant-on-failure-names/all*
           *return-void/all*
@@ -976,29 +996,6 @@
                    do (assert (null (intersection x y :test #'equal)))))
   ;; total function count
   (reduce #'+ (mapcar #'length *all-conversion-lists*)))
-
-;; No varargs support.  And this is not at its best, you shouldn't have to
-;; specify any types yourself, but instead ask cffi what defcfun's arglist and
-;; types are.  But I don't know how to do that.
-(defmacro defun-with-passed-return-values (fn &rest desc)
-  "Define a fn* which calls fn, where * in DESC says to leave argument as is,
-and :typename says to pass a generated foreign object of the same type in its
-place and, after the function is called, return it as a value.  The order of the
-returned values is the same as they appear in the original arglist."
-  (let ((arglist (second (function-lambda-expression (fdefinition fn)))))
-    (print arglist)
-    (assert (eql (length desc) (length arglist)))
-    (loop for type-or-skip in desc
-          for argname in arglist
-          when (eql type-or-skip '*)
-            collect argname into new-arglist
-          when (keywordp type-or-skip)
-            collect (list argname type-or-skip) into foreign-objects
-          finally (return
-                    `(defun ,(symbolicate fn '*) ,new-arglist
-                       (cffi:with-foreign-objects ,foreign-objects
-                         (,fn ,@arglist)
-                         (values ,@(mapcar (lambda (x) `(cffi:mem-aref ,@x)) foreign-objects))))))))
 
 ;; (hu.dwim.sdl/ttf:ttf-init)
 

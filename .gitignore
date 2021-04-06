@@ -1,2 +1,4 @@
 c2ffi-spec/*.lisp
 notes.txt
+**.fasl
+

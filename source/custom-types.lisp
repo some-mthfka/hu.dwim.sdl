@@ -127,6 +127,32 @@ so you will see the previous one: so make sure to keep everything cleaned."
 
 (def-type-conversion-processor enum-checked)
 
+;; ** string starts that that signal errors
+
+#+nil
+(hu.dwim.sdl/core:sdl-get-platform) ; "Linux"
+#+nil
+(hu.dwim.sdl/core:sdl-get-pixel-format-name 0) ; error
+
+(defun generate-type-expand-defmethod/checked-string-failure
+    (actual-type custom-type original-function-name new-function-name condition-name)
+  `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
+     `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type)))
+        (when (and (not (cffi:null-pointer-p return-value))
+                   (alexandria:starts-with-subseq ,,(second (assoc original-function-name
+                                                                   *return-string-on-failure/all*
+                                                                   :test #'equal))
+                                                  return-value))
+          (error ',',condition-name
+                 :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
+                 :format-arguments (list (get+clear-sdl-error) ,',new-function-name
+                                         return-value ',',actual-type)))
+        return-value)))
+
+(def-custom-type-setup-macro checked-string-failure)
+
+(def-type-conversion-processor checked-string-failure)
+
 ;; ** constant checked
 
 #+nil
@@ -268,4 +294,6 @@ so you will see the previous one: so make sure to keep everything cleaned."
          (process/checked-bool-conversion name type-specifier))
         ((convert-p *return-bool-like-0-for-false-negative-for-errors/all*)
          (process/checked-bool-like-negative-failure name type-specifier))
+        ((convert-p *return-string-on-failure/all* :key #'first)
+         (process/checked-string-failure name type-specifier))
         (t type-specifier)))))
