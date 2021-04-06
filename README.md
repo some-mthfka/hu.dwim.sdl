@@ -150,6 +150,10 @@ hand, some could've been misjudged: there could have been errors. If something
 doesn't work, always make sure to go and check the generated definition along
 with the SDL's documentation for the function which is alledegly misbehaving.**
 
+As a precaution, if you generate new specs with new functions in the sense that
+they aren't in the conversion lists, you will get a warned about them, and if
+those functions have unknown abbreviations, you will be told about that as well.
+
 ### Example
 
 The following example opens a window and shows a rectangle and then, after two seconds, closes the window.
@@ -218,6 +222,11 @@ All the breaking changes will be listed in this file.
   them. The original definitions should be available with % prefix, though.
 - This fork relies on support prologue code pull request being merged in
   `cffi`. The change is only a few lines of code and shouldn't be a problem.
+- After generation, the generated files are loaded and warnings for `defmethod`
+  redifinitions are emmited (so, it happens when you generate stuff). I don't
+  know how to circumvent this, unless you want to check if the method already
+  exists, but that approach wouldn't work if you do multiple times generations
+  in a row (not really a user's concern, but yeah).
 
 ### Alternative projects
 
