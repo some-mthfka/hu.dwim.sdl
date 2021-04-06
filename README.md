@@ -92,16 +92,14 @@ It wouldn't be bad if CFFI could generate multiple functions per one C function,
 - certain enum value signals an error
 - constant (such as 0) signals an error
 - negative number signals an error
+- string starts with smth errors
 - `SDL_bool` is converted to `t`/`nil`.
 - `SDL_bool` is converted to `t`/`nil`, signaling error on `nil`.
 - Bool-like functions where 0 means FALSE
 
-
 `SDL_DequeueAudio` and `SDL_RWwrite` are exceptions: the user passes a number and they return another number, and if the number they return is less than the one you passed, that's an error and you call `sdl-error`. I don't think C2FFI supports this case, but if it does, this will be fixed.
 
-`SDL_GetPlatform` returns a string starting with "Unknown" if the correct platform name is not available, so this is unchecked as well. 
-
-In general, things that aren't necessarily errors
+Figuring out if a function does any error checking / conversion is simple: go to its definition and look at the return type. The typedefs for return values are unique for each function with custom expansion to make it possible to set up an expand method individually. These typedefs have the format: `<function name>/<expansion procedure>/<actual type>`. It will be clear from the `<expansion procedure>` what you are dealing with. You shouldn't really have to know about this long type name, the actual type should be enough.
 
 ### Example
 
@@ -147,6 +145,12 @@ The following example opens a window and shows a rectangle for two seconds and t
 ```
 
 TODO Is there a way to generate annotated struct makers that would show the actual fields? That would require the means of getting the fields of a given struct (if one had to generated these manually).
+
+### Status: beta
+
+I think everything is pretty solid, but there may be errors in judgement when sorting functions in the conversion lists: there could be some stray functions that may not really need error checking, or, on the contrary, may benefit from it. If there's a clear cut case of this and you see it, don't rely on it, it will be considered a bug and will be fixed.
+
+All the breaking changes will be listed in this file.
 
 ### Alternative projects
 
