@@ -2,16 +2,16 @@
 
 ## Fork
 
-https://bugzilla.libsdl.org/show_bug.cgi?id=3219
-
 This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). The details are in the subsections below, but here's the summary:
 
 - `hu.dwim.sdl.ffi` was removed in favour of seperate packages, one for each sdl module.
 - Everything is now exported in the generated files.
 - The generated names are lispy now.
-- Automatic conversion and error checking for _all_ functions.
+- Automatic boolean conversion and error checking: for _all_ functions.
 
-New dependencies: `cl-ppcre` for regexps and `parachute` for tests.
+New dependencies: `cl-ppcre` for regexps and `parachute` for some tests.
+
+Also, now, the generated files call stuff from the `hu.dwim.sdl` package. I don't think this to be a big deal, though.
 
 ### Packages
 
@@ -28,18 +28,15 @@ Instead of `|SDL_Init|` you now simply write `sdl-init`.  See `ffi-name-transfor
   - Abbreviations are treated nicely (such as `GL`, `GUID`, `RGBA` etc.);
   - all constants and enum members are braced with pluses, e.g. `+have-pow+`;
   - and these table substitutions take place: 
-    - `SDL_Log` -> `SDL-LOG`
-    - `SDL_log` -> `SDL-LOG*`
-    - `SDL_TRUE` -> `TRUE`
-    - `SDL_FALSE` -> `FALSE`.
+    - `SDL_Log` -> `LOG`
+    - `SDL_log` -> `LOG*`
+  - `SDL_`, `TTF_`, `GFX_`, `IMG_` prefixes were removed.
  
-I skipped _most_ the functions listed at https://wiki.libsdl.org/ToDo, which includes C function wrappers/equivalents (such `SDL_ceil`, `SDL_sscanf`, `SDL_strupr`, `SDL_strstr`, `SDL_strrchr` and many, many other hissing, stumpy sounds). Some functions I wasn't sure about. Some weren't documented. See `hu.dwim.sdl::*skip/core*` for details. However, I didn't skip the `GameController` functions (they are a draft) as they had documentation (so, they may change here as well).
-
 #### Conventions
 
 I think the following conventions would be good.
 
-##### `<function-name>*`: Convenience functions for passed return values ()
+##### `<function-name>*`: Convenience functions for passed return values
 
 Instead of allocating foreign objects to pass to a function for value return,
 make a wrapping to do it for you, e.g. `ttf-size-text` takes a pointers to width
@@ -84,26 +81,78 @@ overhead for those who don't want it.
 
 ##### TODO `%<original-function-name>`
 
-It wouldn't be bad if CFFI could generate multiple functions per one C function, or even simply give an option to include the original unmodified function but with a custom name e.g. `sdl-init` and `%sdl-init`. This could be useful when one doesn't want the overhead of conversion or error checking.
+It wouldn't be bad if CFFI could generate multiple functions per one C function,
+or even simply give an option to include the original unmodified function but
+with a custom name e.g. `sdl-init` and `%sdl-init`. This could be useful when
+one doesn't want the overhead of conversion or error checking.
 
 ### Automatic Conversion and Error checking of Return Values
+
+Functions in SDL2 return error codes, and there are several types.  They aren't
+indicated in any way, other than on wiki, and that's what I did. Some were easy
+to pick with regexps, others I looked through manually.  The assortment is
+exhaustive and is meant to stay that way.
+
+It should have been easier has [this
+issue](https://bugzilla.libsdl.org/show_bug.cgi?id=3219) been resolved, filed
+for the exact same purpose of this library, but it hasn't been.
+
+The following expansions of return values take place:
 
 - NULL signals an error
 - certain enum value signals an error
 - constant (such as 0) signals an error
 - negative number signals an error
-- string starts with smth errors
-- `SDL_bool` is converted to `t`/`nil`.
-- `SDL_bool` is converted to `t`/`nil`, signaling error on `nil`.
-- Bool-like functions where 0 means FALSE
+- string starts with something indicating an error
+- bool-like value like `SDL_bool` and where `0` indicates false are converted to
+  `nil` on `0`/`SDL_FALSE` and `t` otherwise.
+- same as above, but where false signals an error
+ 
+These are fairly easy to add should there be more cases.
 
-`SDL_DequeueAudio` and `SDL_RWwrite` are exceptions: the user passes a number and they return another number, and if the number they return is less than the one you passed, that's an error and you call `sdl-error`. I don't think C2FFI supports this case, but if it does, this will be fixed.
+The values are expanded based on the actual return type of the function - the
+expansion methods are defined at the time of return type name conversion and the
+code with custom type details is inserted into the generated file, right before
+the function definiton in question.
 
-Figuring out if a function does any error checking / conversion is simple: go to its definition and look at the return type. The typedefs for return values are unique for each function with custom expansion to make it possible to set up an expand method individually. These typedefs have the format: `<function name>/<expansion procedure>/<actual type>`. It will be clear from the `<expansion procedure>` what you are dealing with. You shouldn't really have to know about this long type name, the actual type should be enough.
+Each function has it's own error condition: `<function-name>-error` and it is
+exported.  All error conditions inherit from `hu.dwim.sdl:sdl-error`. The actual
+errors are quite informative, naming the return value, its type, and showing
+the `SDL_GetError` output.
+
+Finding out if a function does any error checking / conversion is simple: go to
+its definition and look at the return type. The typedefs for return values are
+unique for each function with custom expansion to make it possible to set up an
+expand method individually. These typedefs have the format: `<function
+name>/<expansion procedure>/<actual type>`. It will be clear from the
+`<expansion procedure>` what you are dealing with. Otherwise you shouldn't
+really have to know or care about this long type name, the actual type should be
+enough.
+
+Another way is to go to [](source/type-conversion-lists.lisp) and see for yourself.
+ 
+I skipped _most_ of the functions listed at https://wiki.libsdl.org/ToDo, which
+includes C function wrappers/equivalents (e.g. `SDL_sscanf`). Some functions I
+wasn't sure about. Some weren't documented. See `hu.dwim.sdl::*skip/core*` for
+details. However, I didn't skip the `GameController` functions (they are a
+draft) as they had documentation.
+
+Also, `SDL_DequeueAudio` and `SDL_RWwrite` are exceptions: the user passes a
+number and they return another number, and if the number returned is less than
+the one passed, that's an error and the user calls `SDL_GetError`. I don't think
+C2FFI supports this case. Anyway, I redefined these manually with error checks
+in [](core-extras.lisp). I haven't tested them and, in fact, the current specs
+are out of date and don't have them at all. Unmodified versions prefixed with %
+should be available for these.
+
+**There are many functions, some were picked with regexps, others were picked by
+hand, some could've been misjudged: there could have been errors. If something
+doesn't work, always make sure to go and check the generated definition along
+with the SDL's documentation for the function which is alledegly misbehaving.**
 
 ### Example
 
-The following example opens a window and shows a rectangle for two seconds and then closes the window.
+The following example opens a window and shows a rectangle and then, after two seconds, closes the window.
  
 ``` 
 (defpackage #:sdl2-example
@@ -143,13 +192,32 @@ The following example opens a window and shows a rectangle for two seconds and t
   (sdl:quit))
 ```
 
-TODO Is there a way to generate annotated struct makers that would show the actual fields? That would require the means of getting the fields of a given struct (if one had to generated these manually).
+TODO Is there a way to generate annotated struct makers that would show the
+actual fields in the docstring? That would require the means of getting the
+fields of a given struct (if one had to generate these manually).
 
 ### Status: beta
 
-I think everything is pretty solid, but there may be errors in judgement when sorting functions in the conversion lists: there could be some stray functions that may not really need error checking, or, on the contrary, may benefit from it. If there's a clear cut case of this and you see it, don't rely on it, it will be considered a bug and will be fixed.
+I think everything is pretty solid, but there may be errors in judgement about
+the functions in the conversion lists: there could be some stray functions that
+may not really need error checking or conversion, or, on the contrary, those
+that may. If there's a clear cut case of such an error that you find, don't rely
+on it, it will be likely considered a bug and will be fixed. So, please, report
+dubious cases.
 
 All the breaking changes will be listed in this file.
+
+#### Problems
+
+- The specs in the repo are out of date by 5 years. I didn't figure out how to
+  regenerate them myself, cffi was giving me some pesky error, while the `c2ffi`
+  utility worked fine if I supplied `/usr/include` to it, but my attempts to do
+  this within the asdf definition were short-lived.
+- Definitions for `SDL_DequeueAudio` and `SDL_RWwrite` were done manually to add
+  special cases of error checking (see above about them), and I didn't test
+  them. The original definitions should be available with % prefix, though.
+- This fork relies on support prologue code pull request being merged in
+  `cffi`. The change is only a few lines of code and shouldn't be a problem.
 
 ### Alternative projects
 
@@ -159,9 +227,15 @@ All the breaking changes will be listed in this file.
 - [sdl2-gfx](https://github.com/mabragor/sdl2-gfx)
 - [cl-sdl2-image](https://github.com/lispgames/cl-sdl2-image)
 
-To add to the How section below, the libraries listed above all use
-[cl-autowrap](https://github.com/rpav/cl-autowrap) and this library is using
-[cffi](https://common-lisp.net/project/cffi/) with its ASDF-integrated c2ffi. They both use c2ffi
+To add some details to the *How* section below, the libraries listed above all
+use [cl-autowrap](https://github.com/rpav/cl-autowrap) and this library is using
+[cffi](https://common-lisp.net/project/cffi/) with its ASDF-integrated
+c2ffi. They both use the `c2ffi` utility to generate the specs, but to the best
+of my knowledge, `cffi` has these advantages:
+- it generates a file which you can "goto definition", while `cl-autowrap`
+  provides a macro, which isn't so easy to work with, and
+- it provides a way to build compiler-macro return value expansions (used
+  extensively in this project for return value conversion and checking).
 
 ## What
 

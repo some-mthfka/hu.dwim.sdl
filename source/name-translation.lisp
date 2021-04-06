@@ -13,7 +13,7 @@
        ,@body)))
 
 (defun without-prefix (name)
-  (regex-replace "^(SDL|SDL2|IMG|TTF|GFX)_" name ""))
+  (regex-replace "^(SDL|IMG|TTF|GFX)_" name ""))
 
 (defparameter *abbrevs*
   ;; order matters, e.g. RGBA needs to run before RGB, so just sort by length
@@ -55,8 +55,8 @@
     (nreplace "_[A-Z][a-z]" (rx-lambda (string-downcase str)))))
 
 (defun table-replace-p (name)
-  (second (find name '(("SDL_Log" "SDL-LOG")
-                       ("SDL_log" "SDL-LOG*"))
+  (second (find name '(("SDL_Log" "LOG")
+                       ("SDL_log" "LOG*"))
                 :key #'first
                 :test #'equal)))
 
@@ -128,9 +128,9 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   `(parachute:is equal ,expected (ffi-name-transformer ,input ,kind)))
 
 (parachute:define-test+run various-transforms
-  (check :function "SDL_InitSubSystem" "SDL-INIT-SUB-SYSTEM")
+  (check :function "SDL_InitSubSystem" "INIT-SUB-SYSTEM")
   (check :field "__u_char" "--U-CHAR")
-  (check :constant "SDL_HAPTIC_INFINITY" "+SDL-HAPTIC-INFINITY+")
+  (check :constant "SDL_HAPTIC_INFINITY" "+HAPTIC-INFINITY+")
   (check :field "num_texture_formats" "NUM-TEXTURE-FORMATS")
   (check :field "__val" "--VAL")
   (check :field "BitsPerPixel" "BITS-PER-PIXEL")
@@ -139,22 +139,22 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   (check :argument "Vplane" "VPLANE"))
 
 (parachute:define-test+run name-caps
-  (check :type "SDL_GLprofile" "SDL-GL-PROFILE")
-  (check :function "SDL_GL_UnbindGLTexture" "SDL-GL-UNBIND-GL-TEXTURE") ; a FAKE made-up function
-  (check :struct "SDL_RWops" "SDL-RW-OPS")
-  (check :function "SDL_GetWindowID" "SDL-GET-WINDOW-ID")
-  (check :function "SDL_JoystickGetGUIDFromString" "SDL-JOYSTICK-GET-GUID-FROM-STRING")
-  (check :function "SDL_JoystickGetDeviceGUID" "SDL-JOYSTICK-GET-DEVICE-GUID")
-  (check :function "SDL_JoystickGetGUIDString" "SDL-JOYSTICK-GET-GUID-STRING")
+  (check :type "SDL_GLprofile" "GL-PROFILE")
+  (check :function "SDL_GL_UnbindGLTexture" "GL-UNBIND-GL-TEXTURE") ; a FAKE made-up function
+  (check :struct "SDL_RWops" "RW-OPS")
+  (check :function "SDL_GetWindowID" "GET-WINDOW-ID")
+  (check :function "SDL_JoystickGetGUIDFromString" "JOYSTICK-GET-GUID-FROM-STRING")
+  (check :function "SDL_JoystickGetDeviceGUID" "JOYSTICK-GET-DEVICE-GUID")
+  (check :function "SDL_JoystickGetGUIDString" "JOYSTICK-GET-GUID-STRING")
   (check :field "GUID" "GUID")
-  (check :function "TTF_SizeUNICODE" "TTF-SIZE-UNICODE")
-  (check :function "TTF_SizeUTF8" "TTF-SIZE-UTF8")
-  (check :function "SDL_GLattr" "SDL-GL-ATTR")
+  (check :function "TTF_SizeUNICODE" "SIZE-UNICODE")
+  (check :function "TTF_SizeUTF8" "SIZE-UTF8")
+  (check :function "SDL_GLattr" "GL-ATTR")
   (check :function "rotozoomSurfaceXY" "ROTOZOOM-SURFACE-XY")
-  (check :function "SDL_imageFilterMMXdetect" "SDL-IMAGE-FILTER-MMX-DETECT")
-  (check :function "SDL_WriteBE64" "SDL-WRITE-BE64")
-  (check :function "SDL_WriteLE16" "SDL-WRITE-LE16")
-  (check :function "SDL_HasSSE41" "SDL-HAS-SSE41")
-  (check :function "SDL_GetRGBA" "SDL-GET-RGBA")
+  (check :function "SDL_imageFilterMMXdetect" "IMAGE-FILTER-MMX-DETECT")
+  (check :function "SDL_WriteBE64" "WRITE-BE64")
+  (check :function "SDL_WriteLE16" "WRITE-LE16")
+  (check :function "SDL_HasSSE41" "HAS-SSE41")
+  (check :function "SDL_GetRGBA" "GET-RGBA")
   (check :struct "ANON-STRUCT-1" "ANON-STRUCT-1")
   (check :enum "ANON-ENUM-10" "ANON-ENUM-10"))

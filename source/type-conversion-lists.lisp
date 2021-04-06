@@ -520,7 +520,7 @@
 
 ;; Some things on this list are commented so that the user gets a warning about them.
 (defl *skip/core*                       ; checked all of these manually on wiki
-  ;; requires a manual check
+  ;; requires a different sort of check - redefined these in core-extras.lisp
   "SDL_RWwrite" ; See README Returns the number of objects written, which will be less than **num** on error
   "SDL_DequeueAudio" ; See README, Returns number of bytes dequeued, which could be less than requested; call SDL_GetError()
   ;; low-level stuff

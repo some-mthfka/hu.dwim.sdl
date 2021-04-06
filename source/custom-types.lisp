@@ -16,6 +16,9 @@
 ;; requires us to specify the actual type (which, in the case of window
 ;; creation, is "SDL_Window *").
 
+;; *CAUTION* if you redefine anything here, you will most likely need to
+;; renegerate the files (by removing them) or at least reload the package.
+
 ;; ** preliminaries
 
 (define-condition sdl-error (simple-error) ())
@@ -98,9 +101,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** enum values that signal errors
 
 #+nil
-(hu.dwim.sdl/core:sdl-get-scancode-from-name "A") ; should return an integer
+(hu.dwim.sdl/core:get-scancode-from-name "A") ; should return an integer
 #+nil
-(hu.dwim.sdl/core:sdl-get-scancode-from-name "AA") ; shoudl signal a condition
+(hu.dwim.sdl/core:get-scancode-from-name "AA") ; shoudl signal a condition
 
 (defun generate-type-expand-defmethod/enum-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -130,19 +133,18 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** string starts that that signal errors
 
 #+nil
-(hu.dwim.sdl/core:sdl-get-platform) ; "Linux"
+(hu.dwim.sdl/core:get-platform) ; "Linux"
 #+nil
-(hu.dwim.sdl/core:sdl-get-pixel-format-name 0) ; error
+(hu.dwim.sdl/core:get-pixel-format-name 0) ; error
 
 (defun generate-type-expand-defmethod/checked-string-failure
     (actual-type custom-type original-function-name new-function-name condition-name)
   `(defmethod cffi:expand-from-foreign (value (type ,custom-type))
      `(let ((return-value (cffi:convert-from-foreign ,value ',',actual-type)))
-        (when (and (not (cffi:null-pointer-p return-value))
-                   (alexandria:starts-with-subseq ,,(second (assoc original-function-name
-                                                                   *return-string-on-failure/all*
-                                                                   :test #'equal))
-                                                  return-value))
+        (when (alexandria:starts-with-subseq ,,(second (assoc original-function-name
+                                                              *return-string-on-failure/all*
+                                                              :test #'equal))
+                                             return-value)
           (error ',',condition-name
                  :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
                  :format-arguments (list (get+clear-sdl-error) ,',new-function-name
@@ -156,11 +158,11 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** constant checked
 
 #+nil
-(hu.dwim.sdl/core:sdl-get-window-id (cffi:null-pointer))
+(hu.dwim.sdl/core:get-window-id (cffi:null-pointer))
 #+nil
-(hu.dwim.sdl/core:sdl-tls-create) ; works
+(hu.dwim.sdl/core:tls-create) ; works
 #+nil
-(hu.dwim.sdl/ttf:ttf-was-init)
+(hu.dwim.sdl/ttf:was-init)
 
 (defun generate-type-expand-defmethod/constant-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -184,7 +186,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** negative return code error
 
 #+nil
-(hu.dwim.sdl/core:sdl-get-display-mode 0 1 (cffi:null-pointer))
+(hu.dwim.sdl/core:get-display-mode 0 1 (cffi:null-pointer))
 
 (defun generate-type-expand-defmethod/negative-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -206,9 +208,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** bool conversion (no error checking)
 
 #+nil
-(hu.dwim.sdl/core:sdl-has-3dnow)
+(hu.dwim.sdl/core:has-3dnow)
 #+nil
-(hu.dwim.sdl/core:sdl-has-sse)
+(hu.dwim.sdl/core:has-sse)
 
 (defun generate-type-expand-defmethod/bool-conversion
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -223,7 +225,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** booleans (where SDL_FALSE means an error)
 
 #+nil
-(hu.dwim.sdl/core:sdl-remove-timer 0)
+(hu.dwim.sdl/core:remove-timer 0)
 
 (defun generate-type-expand-defmethod/checked-bool-conversion
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -244,7 +246,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** bool-like integers with conversion and negative return on errors
 
 #+nil
-(hu.dwim.sdl/core:sdl-joystick-is-haptic (cffi:null-pointer))
+(hu.dwim.sdl/core:joystick-is-haptic (cffi:null-pointer))
 
 (defun generate-type-expand-defmethod/checked-bool-like-negative-failure
     (actual-type custom-type original-function-name new-function-name condition-name)

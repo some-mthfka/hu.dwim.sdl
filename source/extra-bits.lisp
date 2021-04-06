@@ -87,7 +87,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 (defun prologue-callback (&key &allow-other-keys)
   (remove nil (list (prologue-from-core))))
 
-
 (defun epilogue-callback (&key &allow-other-keys)
   (remove nil (list (epilogue-unknown-names)
                     (epilogue-questionable-names))))
