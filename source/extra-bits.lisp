@@ -52,11 +52,17 @@ returned values is the same as they appear in the original arglist."
 (defun prologue-from-core ()
   (unless (eql *package* (find-package :hu.dwim.sdl/core))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (do-symbols (symbol (find-package :hu.dwim.sdl/core))
-         ;; to avoid function-pointer error, or if anything else like that gets
-         ;; introduced before the prologue:
-         (unless (find-symbol (symbol-name symbol) *package*) 
-           (import symbol)))))) 
+       (let ((skip-list (list (ffi-name-transformer "SDL_Quit" :function)
+                              (ffi-name-transformer "SDL_Init" :function)
+                              (ffi-name-transformer "SDL_WasInit" :function)
+                              (ffi-name-transformer "SDL_PATCHLEVEL" :constant))))
+         (do-symbols (symbol (find-package :hu.dwim.sdl/core))
+           ;; to avoid function-pointer error, or if anything else like that
+           ;; gets introduced before the prologue:
+           (let ((name (symbol-name symbol)))
+             (unless (or (find-symbol name *package*)
+                         (member name skip-list :test #'equal))
+               (import symbol)))))))) 
 
 ;; * Epilogue: unknown/questionable names warnings
 

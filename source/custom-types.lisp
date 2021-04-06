@@ -23,11 +23,11 @@
 (defun get+clear-sdl-error ()
   "Some functions, like `sdl-get-window-from-id', won't set sdl error message,
 so you will see the previous one: so make sure to keep everything cleaned."
-  (let ((err (hu.dwim.sdl/core::sdl-get-error)))
+  (let ((err (hu.dwim.sdl/core::get-error)))
     (if (emptyp err)
         "/SDL_GetError() had no error message./"
         (prog1 (princ-to-string err)
-          (hu.dwim.sdl/core::sdl-clear-error)))))
+          (hu.dwim.sdl/core::clear-error)))))
 
 ;; ** generation shared stuff
 
@@ -75,9 +75,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
 ;; ** null pointer returned is error
 
 #+nil
-(hu.dwim.sdl/core:sdl-haptic-open-from-mouse)
+(hu.dwim.sdl/core:haptic-open-from-mouse)
 #+or
-(hu.dwim.sdl/core:sdl-get-window-from-id 43434)
+(hu.dwim.sdl/core:get-window-from-id 43434)
 
 (defun generate-type-expand-defmethod/null-checked
     (actual-type custom-type original-function-name new-function-name condition-name)

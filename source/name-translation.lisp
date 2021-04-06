@@ -12,6 +12,9 @@
        (declare (ignorable str))
        ,@body)))
 
+(defun without-prefix (name)
+  (regex-replace "^(SDL|SDL2|IMG|TTF|GFX)_" name ""))
+
 (defparameter *abbrevs*
   ;; order matters, e.g. RGBA needs to run before RGB, so just sort by length
   (sort (list "SDL" "SDL2" "IMG" "TTF" "GFX"
@@ -53,9 +56,7 @@
 
 (defun table-replace-p (name)
   (second (find name '(("SDL_Log" "SDL-LOG")
-                       ("SDL_log" "SDL-LOG*")
-                       ("SDL_TRUE" "+TRUE+")
-                       ("SDL_FALSE" "+FALSE+"))
+                       ("SDL_log" "SDL-LOG*"))
                 :key #'first
                 :test #'equal)))
 
@@ -83,7 +84,7 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
   (declare (ignorable kind))
   (check-type name string)
-  (let ((name* (caps-replace (substitute #\_ #\- name))))
+  (let ((name* (caps-replace (without-prefix (substitute #\_ #\- name)))))
     (labels ((_->- (name) (substitute #\- #\_ name))
              (from-camel (name) (cffi/c2ffi:camelcase-to-dash-separated name))
              (muff (name char) (concatenate 'string char name char))

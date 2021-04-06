@@ -3,7 +3,7 @@
 (defun %c-fun/rc/check-error (rc fn-name whole-form)
   (when (minusp rc)
     (error "SDL FFI call failed. Name: ~S, error: ~S (~S), expression: ~S."
-           fn-name (sdl-get-error) rc whole-form)))
+           fn-name (hu.dwim.sdl/core::get-error) rc whole-form)))
 
 (defmacro c-fun/rc (&whole whole fn-name &rest args)
   (with-unique-names (rc)

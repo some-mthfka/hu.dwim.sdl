@@ -113,35 +113,34 @@ The following example opens a window and shows a rectangle for two seconds and t
 (in-package :sdl2-example)
 
 (progn
-  (hu.dwim.sdl::defun-with-passed-return-values sdl:sdl-get-window-size * :int :int)
-  (sdl:sdl-init sdl:+sdl-init-video+)
-  (let* ((window (sdl:sdl-create-window "a flying square"
-                                        sdl:+sdl-windowpos-undefined+
-                                        sdl:+sdl-windowpos-undefined+
-                                        0 0
-                                        (logior sdl:+sdl-window-resizable+
-                                                sdl:+sdl-window-fullscreen-desktop+)))
-         (renderer (sdl:sdl-create-renderer window -1 sdl:+sdl-renderer-accelerated+)))
+  (sdl:init sdl:+init-video+)
+  (let* ((window (sdl:create-window "a flying square"
+                                    sdl:+windowpos-undefined+
+                                    sdl:+windowpos-undefined+
+                                    0 0
+                                    (logior sdl:+window-resizable+
+                                            sdl:+window-fullscreen-desktop+)))
+         (renderer (sdl:create-renderer window -1 sdl:+renderer-accelerated+)))
     (dotimes (time 120)
       ;; clear
-      (sdl:sdl-set-render-draw-color renderer 255 255 255 255)
-      (sdl:sdl-render-clear renderer)
-      (sdl:sdl-set-render-draw-color renderer 0 0 0 255)
+      (sdl:set-render-draw-color renderer 255 255 255 255)
+      (sdl:render-clear renderer)
+      (sdl:set-render-draw-color renderer 0 0 0 255)
       ;; draw first rectangle, using SDL primitives with manual rectangle management
-      (cffi:with-foreign-object (rect '(:struct sdl:sdl-rect))
-        (cffi:with-foreign-slots ((sdl:x sdl:y sdl:w sdl:h) rect (:struct sdl:sdl-rect))
-          (multiple-value-bind (total-x total-y) (sdl:sdl-get-window-size* window)
+      (cffi:with-foreign-object (rect '(:struct sdl:rect))
+        (cffi:with-foreign-slots ((sdl:x sdl:y sdl:w sdl:h) rect (:struct sdl:rect))
+          (multiple-value-bind (total-x total-y) (sdl:get-window-size* window)
             (setf sdl:x (- (floor total-x 2) 100)
                   sdl:y (- (floor total-y 2) 100)
                   sdl:w 200
                   sdl:h 200))
-          (sdl:sdl-render-draw-rect renderer rect)))
+          (sdl:render-draw-rect renderer rect)))
       ;; show
-      (sdl:sdl-render-present renderer)
-      (sdl:sdl-delay 16))
-    (sdl:sdl-destroy-renderer renderer)
-    (sdl:sdl-destroy-window window))
-  (sdl:sdl-quit))
+      (sdl:render-present renderer)
+      (sdl:delay 16))
+    (sdl:destroy-renderer renderer)
+    (sdl:destroy-window window))
+  (sdl:quit))
 ```
 
 TODO Is there a way to generate annotated struct makers that would show the actual fields? That would require the means of getting the fields of a given struct (if one had to generated these manually).
