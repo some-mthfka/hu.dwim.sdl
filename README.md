@@ -24,7 +24,7 @@ don't think this to be a big deal, though.
  
 ### Naming
 
-Instead of `|SDL_Init|` you now simply write `sdl:init`.  See
+Instead of `|SDL_CreateWindow|` you now simply write `create-window`.  See
 `ffi-name-transformer` in [name-translation](source/name-translation.lisp) for details, but
 basically:
   - all underscores are replaced with dashes; 
@@ -77,17 +77,23 @@ multiple variant, but the idea is to add these definitions to this codebase.
  
 Note that the resulting definitions end up in the same package as the original function.
 
-##### `<function-name>*gc`
+##### (maybe) `<function-name>-gc`
 
-For the garbage collected version of a function. There aren't any GC additions
-so far, though. But I think they should be named seperately to avoid any
-overhead for those who don't want it.
+With `<function-name>*gc` standing for a garbage collected version of `<function-name>*`.
 
+There aren't any GC additions so far.
+
+Name clashes with new SDL functions: very unlikely, I think.
+
+##### (maybe) make-<struct-name>
+
+##### (maybe) with-<struct-name>
+ 
 ##### **TODO** `%<original-function-name>`
 
 It wouldn't be bad if CFFI could generate multiple functions per one C function,
 or even simply give an option to include the original unmodified function but
-with a custom name e.g. `sdl:init` and `%sdl:init`. This could be useful when
+with a custom name e.g. `init` and `%init`. This could be useful when
 one doesn't want the overhead of conversion or error checking.
 
 ### Automatic Conversion and Error checking of Return Values
@@ -153,7 +159,7 @@ prefixed with % should be available for these.
 **There are many functions, some were picked with regexps, others were picked by
 hand, some could've been misjudged: there could have been errors. If something
 doesn't work, always make sure to go and check the generated definition along
-with the SDL's documentation for the function which is alledegly misbehaving.**
+with the relevant SDL documentation.**
 
 As a precaution, if you generate new specs with new functions in the sense that
 they aren't in the conversion lists, you will get a warned about them, and if
@@ -231,8 +237,8 @@ All the breaking changes will be listed in this file.
 - After generation, the generated files are loaded and warnings for `defmethod`
   redifinitions are emmited (so, it happens when you generate stuff). I don't
   know how to circumvent this, unless you want to check if the method already
-  exists, but that approach wouldn't work if you do multiple times generations
-  in a row (not really a user's concern, but yeah).
+  exists, but that approach wouldn't work if you do multiple generations in a
+  row (not really a user's concern, but yeah).
 
 ### Alternative projects
 
