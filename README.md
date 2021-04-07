@@ -85,9 +85,9 @@ There aren't any GC additions so far.
 
 Name clashes with new SDL functions: very unlikely, I think.
 
-##### (maybe) make-<struct-name>
+##### (maybe) make-`<struct-name>`
 
-##### (maybe) with-<struct-name>
+##### (maybe) with-`<struct-name>`
  
 ##### **TODO** `%<original-function-name>`
 
