@@ -4,16 +4,16 @@
 
 ;; see readme for details on this
 
-;; No varargs support.  And this is not at its best, you shouldn't have to
-;; specify any types yourself, but instead ask cffi what defcfun's arglist and
-;; types are.  But I don't know how to do that.
 (defmacro defun-with-passed-return-values (fn* fn suppress-original-return arglist desc)
   "Define a fn* which calls fn, where * in DESC says to leave argument as is,
 and anything else (a type specification like :int or (:struct smth)) says to
 pass a generated foreign object of the type in its place and, after the function
-is called, return it as a value.  If SUPPRESS-ORIGINAL-RETURN is t, what the
-function returns is discarded, otherwise returned as the first value.  The order
-of the returned values is the same as they appear in the original arglist."
+is called, return it as a value (the :pointer is ommited from the type info for
+these). If SUPPRESS-ORIGINAL-RETURN is t, what the function returns is
+discarded, otherwise returned as the first value.  The order of the returned
+values is the same as they appear in the original arglist. ARGLIST is for the
+slot specification as it appears in defcfun. You shouldn't use this macro
+manually."
   (loop with argnames = (mapcar #'first arglist)
         for argname in argnames
         for argtype in (mapcar #'second arglist)
@@ -86,11 +86,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 ;; types that point to those structs.  Anon structs are skipped (but not types
 ;; that point to them).  If there are no slots, with macros are skipped Keywords
 ;; are used in case the original definition or the ordering in it changes.
-
-;; TODO Add to readme: note that the order that you supply the keys doesn't
-;; matter, it is always evaluated as they are declared in the struct, so it's
-;; best not to rely on it in case it changes. I don't think there's ordering
-;; information that can be extracted about the supplied keys, so that's that.
 
 ;; I don't know how to cajole the known info about the generated struct out of
 ;; cffi, so I resort to keeping track of this manually.
@@ -227,7 +222,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 ;; we have shadowed cl version of with-slots to allow sdl:with-slots
 (defmacro with-sdl-slots ((vars ptr type) &body body)
   (let ((type* (if (listp type) (second type) type)))
-    (print type*)
     (flet ((type-in-p (package) (when (find-symbol (symbol-name type*)
                                                    (find-package package))
                                   (find-package package))))
@@ -244,34 +238,26 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
            (symbol-macrolet (,@native-vars)
              ,@body))))))
 
-;; (hu.dwim.sdl/core:with-point (a :x 0 :y 5)
-;;   (hu.dwim.sdl::with-sdl-slots ((x y) a (:struct rect))
-;;     (values x y)))
-
-;; (hu.dwim.sdl/core:with-rect* ((a :y 1 :x 0 :h 3 :w 8)
-;;                               (b :x 1 :y 0 :h 3 :w 7))
-;;   (values a b))
-
-;; (defun-with-passed-return-values nil hu.dwim.sdl/core:enclose-points * * * hu.dwim.sdl/core:rect)
-
-;; (cffi:with-foreign-objects ((x 'hu.dwim.sdl/core:rect))
-;;   x)
-
-;; (hu.dwim.sdl/core:with-rect (clip-rect :x 0 :y 0 :w 10 :h 10)
-;;   (hu.dwim.sdl/core:with-point* ((a :x 2 :y 2)
-;;                                  (b :x 7 :y 7))
-;;     (let* ((type '(:struct hu.dwim.sdl/core:point))
-;;            (points (foreign-alloc type :count 2)))
-;;       (setf (mem-aref points type 0) (mem-ref a type)
-;;             (mem-aref points type 1) (mem-ref b type))
-;;       (hu.dwim.sdl/core:with*rect (result) ; `with*' because we don't want to pass some arguments (all in this case)
-;;         (hu.dwim.sdl/core:enclose-points points 2 clip-rect result)
-;;         (mem-ref result '(:struct hu.dwim.sdl/core:rect))))))
-
+#+nil
+(hu.dwim.sdl/core:with-point (a :x 0 :y 5)
+  (hu.dwim.sdl::with-sdl-slots ((x y) a (:struct rect))
+    (values x y)))
+#+nil
+(hu.dwim.sdl/core:with-rect (clip-rect :x 0 :y 0 :w 10 :h 10)
+  (hu.dwim.sdl/core:with-point* ((a :x 2 :y 2)
+                                 (b :x 7 :y 7))
+    (let* ((type '(:struct hu.dwim.sdl/core:point))
+           (points (foreign-alloc type :count 2)))
+      (setf (mem-aref points type 0) (mem-ref a type)
+            (mem-aref points type 1) (mem-ref b type))
+      (hu.dwim.sdl/core:with*rect (result) ; `with*' because we don't want to pass some arguments (all in this case)
+        (hu.dwim.sdl/core:enclose-points points 2 clip-rect result)
+        (mem-ref result '(:struct hu.dwim.sdl/core:rect))))))
 #+nil
 (cffi:foreign-free (hu.dwim.sdl/core:make-rect :x 0 :y 0 :w 10 :h 10))
 #+nil
 (hu.dwim.sdl/core:with-rect (data :x 0 :y 0 :w 10 :h 10) data)
+
 ;; * Passed return values macro macro generation
 
 (defun maybe-generate-passed-return-value-macro (form)
@@ -309,20 +295,3 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 
 (defun callback-factory (&key &allow-other-keys)
   (values #'form-callback #'epilogue-callback #'prologue-callback))
-
-
-(defpackage #:sdl2-example
-  (:use :cl)
-  (:local-nicknames (sdl hu.dwim.sdl/core))
-  (:import-from #:hu.dwim.sdl
-                #:with-sdl-slots))
-
-(in-package :sdl2-example)
-
-(sdl:with-point (a :x 0 :y 5)
-  (with-sdl-slots ((x y) a (:struct rect))
-    (values x y)))
-
-(sdl:with-point (a :x 0 :y 5)
-  (cffi:with-foreign-slots ((sdl:x sdl:y) a (:struct sdl:rect))
-    (values sdl:x sdl:y)))
