@@ -45,39 +45,112 @@ I think the following conventions would be good.
 Instead of allocating foreign objects to pass to a function for value return,
 make a wrapping to do it for you, e.g. `ttf-size-text` takes a pointers to width
 and height variables which it will set, our goal is to make a function
-`ttf-size-text*` that does it for us thus eliminating the need for these
-arguments, ignores the original return value (which would be checked by our call
-to the original function anyway) and returns the width and height instead as
-values (in the same order as they come).
+`ttf-size-text*` that does it for us, eliminating the need for these arguments:
 
 ```
 (with-foreign-objects ((w :int) (h :int))
   (ttf-size-text font text w h)
-  (values (mem-aref w :int) (mem-aref h :int)))
+  (values (mem-ref w :int) (mem-ref h :int)))
 ```
- 
 becomes simply
 
 ```
 (ttf-size-text* font text)
 ```
 
-There's a macro in [extra-bits](source/extra-bits.lisp) that makes it easy enough to do:
+For the list of functions for which this is done (and for a place to add more)
+see [passed-return-value-lists.lisp](source/passed-return-value-lists.lisp).
+
+##### `make-<struct-name>` and `make*<struct-name>`: construction macros
+
+In place of `cffi:foreign-alloc` + cffi:with-foreign-slots and `setf`'ing the
+slots yourself, you can just do this:
 
 ```
-;; t means ignore the original return value: it's for error checking and that's already taken care of
-(defun-with-passed-return-values t ttf-size-text * * :int :int)
+(let ((r (sdl:make-rect :x 0 :y 0 :w 10 :h 10)))
+  ;; ...
+  (cffi:foreign-free r))
 ```
-
-But these have to be specified by hand, and the types do too (they shouldn't
-really have to be, but I don't know how to get this info from cffi).
-
-You can find/add these definitions in [core-extras](source/core-extras.lisp) /
-[ttf-extras](source/ttf-extras.lisp) etc. The function is exported too, along with it's
-multiple variant, but the idea is to add these definitions to this codebase.
+or this, if you want to leave some slots uninitialized:
  
-Note that the resulting definitions end up in the same package as the original function.
+```
+(let ((r (sdl:make*rect)))
+  ;; ...
+  (cffi:foreign-free r))
+```
 
+##### `with-<struct-name>` and `with*<struct-name>`: scoped construction macros
+
+The following are like the make constructs above, but `cffi:foreign-free` is
+done automatically:
+ 
+```
+(sdl:with-rect (r :x 0 :y 0 :w 10 :h 10)
+  ;; ...
+  )
+```
+
+```
+(sdl:with*rect (r)
+  ;; ...
+  )
+```
+ 
+##### `with-<struct-name>*` and `with*<struct-name>*`
+
+These are just like `with-<struct-name>` and `with*<struct-name>` except they
+are for multiple forms:
+
+``` 
+(sdl:with-point* ((a :x 0 :y 0)
+                  (b :x 5 :y 5))
+  ;; ...
+  )
+```
+
+##### `with-sdl-slots`
+
+This macro lets you easily access slots of a struct. Here's an example:
+
+```
+(defpackage #:sdl2-example
+  (:use :cl)
+  (:local-nicknames (sdl hu.dwim.sdl/core))
+  (:import-from #:hu.dwim.sdl
+                #:with-sdl-slots))
+
+(in-package :sdl2-example)
+
+(sdl:with-point (a :x 0 :y 5)
+  (with-sdl-slots ((x y) a (:struct rect))
+    (values x y)))
+```
+
+With `cffi:with-foreign-slots` you would have to either do this:
+ 
+```
+(sdl:with-point (a :x 0 :y 5)
+  (cffi:with-foreign-slots ((sdl:x sdl:y) a (:struct sdl:rect))
+    (values sdl:x sdl:y)))
+```
+
+or import `x`, `y` and `rect` to access them here without the package-resolving
+prefix.
+
+In contrast, `with-sdl-slots` finds `rect` in one of the sdl packages at
+macroexpansion time, places `x` and `y` into the package where `rect` was found
+and sets up a `symbol-macrolet` to replace `x` with `hu.dwim.sdl/core:x` and `y`
+with `hu.dwim.sdl/core:y`, while internally still using
+`cffi:with-foreign-slots`.
+
+##### **TODO** `%<original-function-name>`
+
+It wouldn't be bad if CFFI could generate multiple functions per one C function,
+or even simply give an option to include the original unmodified function but
+with a custom name e.g. `init` and `%init`. This could be useful when one
+doesn't want the overhead of conversion or error checking. Alternatively,
+another file could be generated with its own CFFI options.
+ 
 ##### (maybe) `<function-name>-gc`
 
 With `<function-name>*gc` standing for a garbage collected version of `<function-name>*`.
@@ -85,18 +158,7 @@ With `<function-name>*gc` standing for a garbage collected version of `<function
 There aren't any GC additions so far.
 
 Name clashes with new SDL functions: very unlikely, I think.
-
-##### (maybe) make-`<struct-name>`
-
-##### (maybe) with-`<struct-name>`
  
-##### **TODO** `%<original-function-name>`
-
-It wouldn't be bad if CFFI could generate multiple functions per one C function,
-or even simply give an option to include the original unmodified function but
-with a custom name e.g. `init` and `%init`. This could be useful when
-one doesn't want the overhead of conversion or error checking.
-
 ### Automatic Conversion and Error checking of Return Values
 
 Functions in SDL2 return error codes, and there are several types.  They aren't
@@ -208,6 +270,8 @@ seconds, closes the window.
 ```
 
 ### Status: beta
+
+**WIP** Things aren't very stable at the moment, API is not frozen.
 
 I think everything is pretty solid, but there may be errors in judgement about
 the functions in the conversion lists: there could be some stray functions that

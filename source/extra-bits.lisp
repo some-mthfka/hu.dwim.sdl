@@ -7,33 +7,29 @@
 ;; No varargs support.  And this is not at its best, you shouldn't have to
 ;; specify any types yourself, but instead ask cffi what defcfun's arglist and
 ;; types are.  But I don't know how to do that.
-(defmacro defun-with-passed-return-values (suppress-original-return fn &rest desc)
+(defmacro defun-with-passed-return-values (fn* fn suppress-original-return arglist desc)
   "Define a fn* which calls fn, where * in DESC says to leave argument as is,
 and anything else (a type specification like :int or (:struct smth)) says to
 pass a generated foreign object of the type in its place and, after the function
 is called, return it as a value.  If SUPPRESS-ORIGINAL-RETURN is t, what the
 function returns is discarded, otherwise returned as the first value.  The order
 of the returned values is the same as they appear in the original arglist."
-  (let ((arglist (second (function-lambda-expression (fdefinition fn)))))
-    (assert (eql (length desc) (length arglist)))
-    (loop for type-spec in desc
-          for argname in arglist
-          when (equal (symbol-name type-spec) "*")
-            collect argname into new-arglist
-          else
-            collect (list argname `',type-spec) into foreign-objects
-          finally (return
-                    `(defun ,(symbolicate fn '*) ,new-arglist
-                       (cffi:with-foreign-objects ,foreign-objects
-                         ,(if suppress-original-return `(,fn ,@arglist))
-                         (values
-                          ,@(unless suppress-original-return `((,fn ,@arglist)))
-                          ,@(mapcar (lambda (x) `(cffi:mem-aref ,@x)) foreign-objects))))))))
-
-(defmacro defun-with-passed-return-values* (&body rest)
-  `(progn ,@(loop for desc in rest
-                  collect `(defun-with-passed-return-values ,@desc) ; progn keeps it a top level form
-                  collect `(export ',(symbolicate (car desc) '*)))))
+  (loop with argnames = (mapcar #'first arglist)
+        for argname in argnames
+        for argtype in (mapcar #'second arglist)
+        for designator in (mapcar #'symbol-name desc)
+        do (assert (member designator '("*" "-") :test #'equal))
+        when (equal designator "*")
+          collect argname into new-arglist
+        else collect (list argname `',(second argtype)) into foreign-objects ; omit :pointer
+             and do (assert (eql :pointer (first argtype)))
+        finally (return
+                  `(defun ,fn* ,new-arglist
+                     (cffi:with-foreign-objects ,foreign-objects
+                       ,(if suppress-original-return `(,fn ,@argnames))
+                       (values
+                        ,@(unless suppress-original-return `((,fn ,@argnames)))
+                        ,@(mapcar (lambda (x) `(cffi:mem-ref ,@x)) foreign-objects)))))))
 
 ;; * Useful macros
 
@@ -103,7 +99,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 (defun sym (name exclude)
   (if (member name exclude) (gensym (symbol-name name)) name))
 
-
 (ensure-symbol 'a (find-package :hu.dwim.sdl/core))
 
 ;; name and slot-names are for error checking
@@ -113,9 +108,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
         collect key* into supplied-slots
         collect (list key* value) into key-value-pairs
         finally (progn
-                  (print supplied-slots)
-                  (print slot-names)
-                  (print *package*)
                   (unless optional-p ; error check
                     (let ((diff (set-difference slot-names supplied-slots)))
                       (when diff (error (concat "These keys weren't supplied: ~a. "
@@ -125,10 +117,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                                                              "^MAKE-" (symbol-name name) "MAKE*")
                                                             "WITH*")))))
                   (return (values supplied-slots key-value-pairs)))))
-
-;; (hu.dwim.sdl/core:with-rect* ((a :y 1 :x 0 :h 3 :w 8)
-;;                               (b :x 1 :y 0 :h 3 :w 7))
-;;   (values a b))
 
 (defmacro def-make-struct-macro (name type-name slot-names optional-p)
   (with-gensyms (ptr supplied-slots pairs)
@@ -142,12 +130,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                 (setf ,@(loop for (sn sv) in ,pairs
                               appending `(,sn ,sv))))
               ,',ptr))))))
-
-;; (def-make-struct-macro make-rect rect (x y w h) nil)
-;; (def-make-struct-macro make-rect* rect (x y w h) t)
-
-;; (make*rect :y 0 :w 54)
-;; (make-rect :y 0 :w 54 :h 88 :x 20)
 
 (defmacro def-with-struct-macro (name type-name slot-names optional-p)
   (with-gensyms (supplied-slots pairs)
@@ -180,34 +162,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                        ,@(if rest-of-bindings
                              `((,',macro-name* (,@rest-of-bindings) ,@,body-sym))
                              ,body-sym)))))
-
-;; (def-multi-with-macro with-rect* with-rect (x y w h))
-
-;; (hu.dwim.sdl/core:with-rect (a :x 0 :y 0 :w 0 :h 44)
-;;   (hu.dwim.sdl/core:with-rect (b :x 0 :y 0 :w 0 :h 1)
-;;     (values a b)))
-
-;; (hu.dwim.sdl/core:with-rect* ((a :x 0 :y 0 :w 0 :h 44)
-;;                               (b :x 0 :y 0 :w 0 :h 1))
-;;   (values a b))
-
-;; (def-with-struct-macro with-rect rect (x y w h) nil)
-;; (def-with-struct-macro with*-rect rect (x y w h) t)
-
-;; (with-rect (r :h 5 :x 0 :y 555 :w 11)
-;;   (print "shit"))
-
-;; (def-multi-with-macro with-rect* with-rect (x y w h) nil)
-
-;; (def-multi-with-macro with*-rect* with*-rect (x y w) nil)
-
-;; (with*-rect* ((r1 :x 0 :y 1)))
-
-;; (with-rect (r :x (1+ x) :w 11 :y 1) (print r))
-
-;; (def-with-struct-macro with-rect rect (x y w))
-
-;; (with-rect (r :y 0 :w 54) )
 
 (defun struct-info-from-defcstruct (form)
   (values
@@ -243,24 +197,24 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                  ;; don't redefine struct of the same name:
                  (not (and (eql (first form) 'cffi:defctype) (eql name struct-name)))) 
         (let* ((make-macro-name (symbolicate 'make- name))
+               (make*macro-name (symbolicate 'make* name))
                (with-macro-name (symbolicate 'with- name))
                (with-macro-name* (symbolicate with-macro-name '*))
-               (with*-macro-name (symbolicate 'with*- name))
-               (with*-macro-name* (symbolicate with*-macro-name '*))
-               (all-macros (list make-macro-name
+               (with*macro-name (symbolicate 'with* name))
+               (with*macro-name* (symbolicate with*macro-name '*))
+               (all-macros (list make-macro-name make*macro-name
                                  with-macro-name with-macro-name*
-                                 with*-macro-name with*-macro-name*)))
+                                 with*macro-name with*macro-name*)))
           (list
            `(eval-when (:compile-toplevel :load-toplevel :execute) ; avoid redefinition warnings:
               (mapcar #'fmakunbound ',all-macros))
            `(def-make-struct-macro ,make-macro-name ,(list :struct struct-name) ,slot-names nil)
+           `(def-make-struct-macro ,make*macro-name ,(list :struct struct-name) ,slot-names t)
            `(def-with-struct-macro ,with-macro-name ,(list :struct struct-name) ,slot-names nil)
            `(def-multi-with-macro ,with-macro-name* ,with-macro-name ,slot-names)
-           `(def-with-struct-macro ,with*-macro-name ,(list :struct struct-name) ,slot-names t)
-           `(def-multi-with-macro ,with*-macro-name* ,with*-macro-name ,slot-names)
+           `(def-with-struct-macro ,with*macro-name ,(list :struct struct-name) ,slot-names t)
+           `(def-multi-with-macro ,with*macro-name* ,with*macro-name ,slot-names)
            `(export ',all-macros)))))))
-
-(find-symbol (symbol-name 'rect) (find-package :hu.dwim.sdl/core))
 
 (defun resolve-type-spec (type-spec package)
   (flet ((ensure (x) (or (find-symbol (symbol-name x) package)
@@ -269,8 +223,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
           ((symbolp type-spec) (ensure type-spec))
           ((listp type-spec) (mapcar (rcurry #'resolve-type-spec package) type-spec))
           (t (error "Don't know how to place ~a in a package." type-spec)))))
-
-(resolve-type-spec '(:struct point) (find-package :hu.dwim.sdl/core))
 
 ;; we have shadowed cl version of with-slots to allow sdl:with-slots
 (defmacro with-sdl-slots ((vars ptr type) &body body)
@@ -292,9 +244,13 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
            (symbol-macrolet (,@native-vars)
              ,@body))))))
 
-;; (hu.dwim.sdl/core:with-point (a :y 0 :x 5)
+;; (hu.dwim.sdl/core:with-point (a :x 0 :y 5)
 ;;   (hu.dwim.sdl::with-sdl-slots ((x y) a (:struct rect))
-;;     (values y x)))
+;;     (values x y)))
+
+;; (hu.dwim.sdl/core:with-rect* ((a :y 1 :x 0 :h 3 :w 8)
+;;                               (b :x 1 :y 0 :h 3 :w 7))
+;;   (values a b))
 
 ;; (defun-with-passed-return-values nil hu.dwim.sdl/core:enclose-points * * * hu.dwim.sdl/core:rect)
 
@@ -305,55 +261,44 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 ;;   (hu.dwim.sdl/core:with-point* ((a :x 2 :y 2)
 ;;                                  (b :x 7 :y 7))
 ;;     (let* ((type '(:struct hu.dwim.sdl/core:point))
-;;            (ptr (foreign-alloc type :count 2)))
-;;       (setf (mem-aref ptr type 0) (mem-ref a type)
-;;             (mem-aref ptr type 1) (mem-ref b type))
-;;       (multiple-value-bind (result enclosing-rect)
-;;           (enclose-points* ptr 2 clip-rect)
-;;         (values result (mem-ref enclosing-rect '(:struct hu.dwim.sdl/core:rect)))))))
-
-;; (cffi:with-pointer-to-vector-data (points (make-array 2 :element-type 'fixnum :initial-contents (list 1 2)))
-;;   points)
-
-;; (make-array 5 :initial-contents (list 1 2 3 4 5))
+;;            (points (foreign-alloc type :count 2)))
+;;       (setf (mem-aref points type 0) (mem-ref a type)
+;;             (mem-aref points type 1) (mem-ref b type))
+;;       (hu.dwim.sdl/core:with*rect (result) ; `with*' because we don't want to pass some arguments (all in this case)
+;;         (hu.dwim.sdl/core:enclose-points points 2 clip-rect result)
+;;         (mem-ref result '(:struct hu.dwim.sdl/core:rect))))))
 
 #+nil
 (cffi:foreign-free (hu.dwim.sdl/core:make-rect :x 0 :y 0 :w 10 :h 10))
 #+nil
 (hu.dwim.sdl/core:with-rect (data :x 0 :y 0 :w 10 :h 10) data)
+;; * Passed return values macro macro generation
 
-;; (ql:quickload 'ut)
-;; (ut:def-streamlined-macro )
-
-;; (import '(with-rect) (find-package :hu.dwim.sdl/core))
-
-;; (defmacro with-rect* (((name &key x y w h) &rest rest-of-bindings) &body body)
-;;   `(with-rect (,name :x ,x :y ,y :w ,w :h ,h)
-;;      ,@(if rest-of-bindings
-;;            `((with-rect* (,@rest-of-bindings) ,@body))
-;;            body)))
-
-;; (def-multi-macro make-rect* make-rect (x y w h))
-
-;; (hu.dwim.sdl/core:with-rect* ((a :x 0 :y 0 :w 0)
-;;                               (b :x 0 :y 0 :w 0 :h 1))
-;;   (values a b))
-
-;; (defmacro m (&rest args &key a b) args)
-
-;; (m :b 4 :a 0)
-
-;; (defun fn (&key a) a)
-
-;; (fn :a 0)
-
-;; (hu.dwim.sdl/core:with-rect (r :x 0 :y 0 :w 0)
-;;   a)
+(defun maybe-generate-passed-return-value-macro (form)
+  (when (eql 'cffi:defcfun (first form))
+    (let* ((c-name (first (second form)))
+           (name (second (second form)))
+           (name* (symbolicate name '*))
+           (desc-suppress-return
+             (assoc c-name *auto-passed-return-value+suppress-return/all* :test #'equal))
+           (desc-pass-return
+             (assoc c-name *auto-passed-return-value+pass-return/all* :test #'equal))
+           (desc (or desc-suppress-return desc-pass-return)))
+      (when desc
+        (list
+         `(fmakunbound ',name*)
+         `(hu.dwim.sdl::defun-with-passed-return-values ,name*
+            ,name         
+            ,(when desc-suppress-return t)
+            ,(cdddr form)
+            ,(rest desc))
+         `(export ',name*))))))
 
 ;; * Callback setup
 
 (defun form-callback (form &key &allow-other-keys)
-  (remove nil (maybe-generate-maker-and-with-macros form)))
+  (remove nil (append (maybe-generate-passed-return-value-macro form)
+                      (maybe-generate-maker-and-with-macros form))))
 
 (defun prologue-callback (&key &allow-other-keys)
   (remove nil (list (prologue-from-core))))
@@ -364,3 +309,20 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 
 (defun callback-factory (&key &allow-other-keys)
   (values #'form-callback #'epilogue-callback #'prologue-callback))
+
+
+(defpackage #:sdl2-example
+  (:use :cl)
+  (:local-nicknames (sdl hu.dwim.sdl/core))
+  (:import-from #:hu.dwim.sdl
+                #:with-sdl-slots))
+
+(in-package :sdl2-example)
+
+(sdl:with-point (a :x 0 :y 5)
+  (with-sdl-slots ((x y) a (:struct rect))
+    (values x y)))
+
+(sdl:with-point (a :x 0 :y 5)
+  (cffi:with-foreign-slots ((sdl:x sdl:y) a (:struct sdl:rect))
+    (values sdl:x sdl:y)))

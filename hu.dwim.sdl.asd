@@ -11,29 +11,25 @@
                :cffi
                :cffi/c2ffi
                :cffi-libffi)
-  :components ((:file "package-stage-1"
-                :pathname "source/package-stage-1")
-               (:file "type-conversion-lists"
-                :pathname "source/type-conversion-lists"
-                :depends-on ("package-stage-1"))
-               (:file "name-translation"
-                :pathname "source/name-translation"
-                :depends-on ("type-conversion-lists"))
-               (:file "custom-types"
-                :pathname "source/custom-types"
-                :depends-on ("name-translation"))
-               (:file "extra-bits"
-                :pathname "source/extra-bits"
-                :depends-on ("custom-types"))
-               (:module "source"
-                :depends-on ("c2ffi-spec" "package-stage-1")
+  :components ((:module "prelude"
                 :serial t
+                :pathname "source"
+                :components ((:file "package-stage-1")
+                             (:file "type-conversion-lists")
+                             (:file "passed-return-value-lists")
+                             (:file "name-translation")
+                             (:file "custom-types")
+                             (:file "extra-bits")))
+               (:module "post"
+                :depends-on ("c2ffi-spec")
+                :serial t
+                :pathname "source"
                 :components ((:file "core-extras")
                              (:file "package-stage-2")
                              (:file "package-stage-3")
                              (:file "sdl")))
                (:module "c2ffi-spec"
-                :depends-on ("custom-types")
+                :depends-on ("prelude")
                 :components ((:cffi/c2ffi-file "sdl.h"
                               :package #:hu.dwim.sdl/core
                               :callback-factory "hu.dwim.sdl::callback-factory"
@@ -114,7 +110,8 @@
   :components ((:module "source"
                 :depends-on ("c2ffi-spec")
                 :serial t
-                :components ((:file "ttf-extras")))
+                ;; :components ((:file "ttf-extras"))
+                )
                (:module "c2ffi-spec"
                 :components ((:cffi/c2ffi-file "sdl-ttf.h"
                               :package #:hu.dwim.sdl/ttf

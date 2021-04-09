@@ -9,6 +9,7 @@
    #:defun-with-passed-return-values
    #:defun-with-passed-return-values*
    #:ignore-sdl-errors
+   #:with-sdl-slots
    ;; NOTE: it's not possible to re-export stuff from HU.DWIM.SDL.FFI by directly referencing the symbols,
    ;; because that changes the behavior of CL:SHADOW and thus breaks things.
    ;; http://paste.lisp.org/+3D97
