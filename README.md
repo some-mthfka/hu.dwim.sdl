@@ -230,13 +230,13 @@ With `cffi:with-foreign-slots` you would have to either do this:
     (values sdl:x sdl:y)))
 ```
 
-or import `x`, `y` and `rect` to access them here without the package-resolving
+or import `x`, `y` and `rect` to access them without the package-resolving
 prefix.
 
 In contrast, `with-sdl-slots` finds `rect` in one of the sdl packages at
-macroexpansion time, places `x` and `y` into the package where `rect` was found
-and sets up a `symbol-macrolet` to replace `x` with `hu.dwim.sdl/core:x` and `y`
-with `hu.dwim.sdl/core:y`, while internally still using
+macroexpansion time, assumes `x` and `y` to be in the package where `rect` was
+found and sets up a `symbol-macrolet` to replace `x` with `hu.dwim.sdl/core:x`
+and `y` with `hu.dwim.sdl/core:y`, while internally still using
 `cffi:with-foreign-slots`.
 
 ### Example
@@ -264,7 +264,7 @@ seconds, closes the window.
       ;; clear
       (sdl:set-render-draw-color renderer 255 255 255 255)
       (sdl:render-clear renderer)
-      ;; draw a rectangle, using SDL primitives with manual rectangle management
+      ;; draw a rectangle
       (sdl:set-render-draw-color renderer 0 0 0 255)
       (multiple-value-bind (total-x total-y) (sdl:get-window-size* window)
         (sdl:with-rect (rect :x (- (floor total-x 2) 100)
