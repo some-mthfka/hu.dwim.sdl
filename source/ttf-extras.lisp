@@ -1,6 +1,6 @@
 (in-package :hu.dwim.sdl/ttf)
 
 (hu.dwim.sdl::defun-with-passed-return-values*
-  (size-text * * :int :int)
-  (size-unicode * * :int :int)
-  (size-utf8 * * :int :int))
+  (t size-text * * :int :int)
+  (t size-unicode * * :int :int)
+  (t size-utf8 * * :int :int))

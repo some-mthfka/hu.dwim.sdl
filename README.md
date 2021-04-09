@@ -65,7 +65,8 @@ becomes simply
 There's a macro in [extra-bits](source/extra-bits.lisp) that makes it easy enough to do:
 
 ```
-(defun-with-passed-return-values ttf-size-text * * :int :int)
+;; t means ignore the original return value: it's for error checking and that's already taken care of
+(defun-with-passed-return-values t ttf-size-text * * :int :int)
 ```
 
 But these have to be specified by hand, and the types do too (they shouldn't
@@ -179,7 +180,7 @@ seconds, closes the window.
 
 (progn
   (sdl:init sdl:+init-video+)
-  (let* ((window (sdl:create-window "a flying square"
+  (let* ((window (sdl:create-window "a square"
                                     sdl:+windowpos-undefined+
                                     sdl:+windowpos-undefined+
                                     0 0
@@ -190,15 +191,13 @@ seconds, closes the window.
       ;; clear
       (sdl:set-render-draw-color renderer 255 255 255 255)
       (sdl:render-clear renderer)
+      ;; draw a rectangle, using SDL primitives with manual rectangle management
       (sdl:set-render-draw-color renderer 0 0 0 255)
-      ;; draw first rectangle, using SDL primitives with manual rectangle management
-      (cffi:with-foreign-object (rect '(:struct sdl:rect))
-        (cffi:with-foreign-slots ((sdl:x sdl:y sdl:w sdl:h) rect (:struct sdl:rect))
-          (multiple-value-bind (total-x total-y) (sdl:get-window-size* window)
-            (setf sdl:x (- (floor total-x 2) 100)
-                  sdl:y (- (floor total-y 2) 100)
-                  sdl:w 200
-                  sdl:h 200))
+      (multiple-value-bind (total-x total-y) (sdl:get-window-size* window)
+        (sdl:with-rect (rect :x (- (floor total-x 2) 100)
+                             :y (- (floor total-y 2) 100)
+                             :w 200
+                             :h 200)
           (sdl:render-draw-rect renderer rect)))
       ;; show
       (sdl:render-present renderer)
@@ -207,10 +206,6 @@ seconds, closes the window.
     (sdl:destroy-window window))
   (sdl:quit))
 ```
-
-**TODO** Is there a way to generate annotated struct makers that would show the
-actual fields in the docstring? That would require the means of getting the
-fields of a given struct (if one had to generate these manually).
 
 ### Status: beta
 
@@ -234,11 +229,6 @@ All the breaking changes will be listed in this file.
   them. The original definitions should be available with % prefix, though.
 - This fork relies on support prologue code pull request being merged in
   `cffi`. The change is only a few lines of code and shouldn't be a problem.
-- After generation, the generated files are loaded and warnings for `defmethod`
-  redifinitions are emmited (so, it happens when you generate stuff). I don't
-  know how to circumvent this, unless you want to check if the method already
-  exists, but that approach wouldn't work if you do multiple generations in a
-  row (not really a user's concern, but yeah).
 
 ### Alternative projects
 

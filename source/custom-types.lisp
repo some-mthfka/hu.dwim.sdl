@@ -53,6 +53,12 @@ so you will see the previous one: so make sure to keep everything cleaned."
      (:default-initargs :actual-type (cffi::parse-type ',actual-type))
      (:simple-parser ,custom-type)))
 
+(defun remove-expand-method (custom-type)
+  (when-let ((m (find-method #'cffi:expand-from-foreign nil
+                             (list t (find-class custom-type))
+                             nil)))
+    (remove-method #'cffi:expand-from-foreign m)))
+
 (defmacro def-custom-type-setup-macro (name  &optional (error-checked t))
   `(defmacro ,(symbolicate 'custom-type-setup/ name)
        (original-function-name new-function-name actual-type custom-type)
@@ -61,6 +67,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
           ,,(when error-checked
               ``,(generate-condition-definer condition-name))
           ,(generate-custom-type-definer actual-type custom-type)
+          (remove-expand-method ',custom-type) ; get rid of redefinition warnings
           ,(,(symbolicate 'generate-type-expand-defmethod/ name)
             actual-type custom-type original-function-name new-function-name condition-name)))))
 

@@ -1,7 +1,7 @@
 (in-package :hu.dwim.sdl/core)
 
 (hu.dwim.sdl::defun-with-passed-return-values*
-  (get-window-size * :int :int))
+  (t get-window-size * :int :int))
 
 ;; "SDL_RWwrite"
 
