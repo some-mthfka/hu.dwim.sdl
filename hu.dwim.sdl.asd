@@ -14,7 +14,7 @@
   :components ((:module "prelude"
                 :serial t
                 :pathname "source"
-                :components ((:file "package-stage-1")
+                :components ((:file "defpackage")
                              (:file "type-conversion-lists")
                              (:file "passed-return-value-lists")
                              (:file "name-translation")
@@ -24,10 +24,7 @@
                 :depends-on ("c2ffi-spec")
                 :serial t
                 :pathname "source"
-                :components ((:file "core-extras")
-                             (:file "package-stage-2")
-                             (:file "package-stage-3")
-                             (:file "sdl")))
+                :components ((:file "core-extras")))
                (:module "c2ffi-spec"
                 :depends-on ("prelude")
                 :components ((:cffi/c2ffi-file "sdl.h"

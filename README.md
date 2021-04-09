@@ -9,6 +9,7 @@ details are in the subsections below, but here's the summary:
 - Everything is now exported in the generated files.
 - The generated names are lispy now.
 - Automatic boolean conversion and error checking: for _all_ functions.
+- Convenience macros for working with structs and slots.
 
 New dependencies: `cl-ppcre` for regexps and `parachute` for some tests.
 
@@ -43,8 +44,8 @@ I think the following conventions would be good.
 ##### `<function-name>*`: Convenience functions for passed return values
 
 Instead of allocating foreign objects to pass to a function for value return,
-make a wrapping to do it for you, e.g. `ttf-size-text` takes a pointers to width
-and height variables which it will set, our goal is to make a function
+make a wrapping to do it for you. For example,`ttf-size-text` takes pointers to
+width and height variables which it will set, our goal is to make a function
 `ttf-size-text*` that does it for us, eliminating the need for these arguments:
 
 ```
@@ -58,7 +59,7 @@ becomes simply
 (ttf-size-text* font text)
 ```
 
-For the list of functions for which this is done (and for a place to add more)
+For the list of functions for which this is done (and for a place to add more),
 see [passed-return-value-lists.lisp](source/passed-return-value-lists.lisp).
 
 ##### `make-<struct-name>` and `make*<struct-name>`: construction macros
