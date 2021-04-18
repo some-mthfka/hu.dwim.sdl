@@ -41,9 +41,8 @@ manually."
 ;; * Export
 
 (defun ffi-name-export-predicate (symbol &key &allow-other-keys)
-  (declare (ignore symbol))
-  ;; unlike with `ffi-name-transformer', theres seems to be nothing like `kind' here...
-  t)
+  ;; "TTF_GetFontKerningSize" is deprecated, use "TTF_GetFontKerningSizeGlyphs" instead
+  (not (equal (symbol-name symbol) (ffi-name-transformer "TTF_GetFontKerningSize" :function))))
 
 ;; * Prologue: import symbols from core
 

@@ -718,7 +718,6 @@
   "TTF_SizeUTF8"
   "TTF_SizeText"
   "TTF_GlyphMetrics"
-  "TTF_GetFontKerningSize" ; deprecated, not exporting it, as it can yield wrong results
   "TTF_GetFontKerningSizeGlyphs" ; sources: -1 on error
   )
 
@@ -754,6 +753,7 @@
   "TTF_SetFontHinting"
   "TTF_SetFontOutline"
   "TTF_SetFontStyle"
+  "TTF_GetFontKerningSize" ; deprecated, not exporting it, as it can yield wrong results
   "TTF_ByteSwappedUNICODE")
 
 ;; ** ttf / bool-like ints, 0 for false

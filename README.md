@@ -18,9 +18,6 @@ don't think this to be a big deal, though.
 
 ### Current spec file versions
 
-You don't have to generate the spec files yourself using c2ffi, the specs for
-are included for these version:
-
 <!-- 
 (format nil "- SDL ~s.~s.~s~%- TTF ~s.~s.~s~%- GFX ~s.~s.~s~%- Image ~s.~s.~s~%"
         hu.dwim.sdl/core:+major-version+
@@ -41,6 +38,8 @@ are included for these version:
 - TTF 2.0.15
 - GFX 1.0.4
 - Image 2.0.5
+
+(note that you can generate the specs yourself if you want to)
 
 ### Packages
 
@@ -89,6 +88,13 @@ another file could be generated with its own CFFI options.
 
 With `<function-name>*gc` standing for a garbage collected version of
 `<function-name>*`. There aren't any GC additions so far.
+
+### Exports
+
+Everything is exported, except:
+
+- TTF
+ - `get-font-kerning-size`, which is deprected (use `get-font-kerning-size-glyphs` instead).
  
 ### Automatic Conversion and Error checking of Return Values
 
