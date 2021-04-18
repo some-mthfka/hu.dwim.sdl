@@ -14,6 +14,7 @@
     (cl:progn
       (cl:setf (cl:fdefinition '%dequeue-audio)
                (cl:fdefinition 'dequeue-audio))
+      (cl:fmakunbound 'dequeue-audio)
       (hu.dwim.sdl::define-condition dequeue-audio-error (hu.dwim.sdl::sdl-error) ())
       (cl:export '(%dequeue-audio dequeue-audio-error))
       (cl:defun dequeue-audio (dev data len)
@@ -21,7 +22,7 @@
           (cl:when (cl:< len result)
             (cl:error 'dequeue-audio-error
                       :format-control "SDL call failed: ~S.~%~%~a dequeued less than expected (~a < ~a)."
-                      :format-arguments (cL:list (hu.dwim.sdl::get+clear-sdl-error) 'dequeue-audio result len)))
+                      :format-arguments (cl:list (hu.dwim.sdl::get+clear-sdl-error) 'dequeue-audio result len)))
           result)))
   (common-lisp:undefined-function ()))
 
@@ -30,6 +31,7 @@
     (cl:progn
       (cl:setf (cl:fdefinition '%rw-write)
                (cl:fdefinition 'rw-write))
+      (cl:fmakunbound 'rw-write)
       (hu.dwim.sdl::define-condition rw-write-error (hu.dwim.sdl::sdl-error) ())
       (cl:export '(%rw-write rw-write-error))
       (cl:defun rw-write (context ptr size num)
@@ -37,6 +39,6 @@
           (cl:when (cl:< num result)
             (cl:error 'rw-write-error
                       :format-control "SDL call failed: ~S.~%~%~a dequeued less than expected (~a < ~a)."
-                      :format-arguments (cL:list (hu.dwim.sdl::get+clear-sdl-error) 'rw-write result num)))
+                      :format-arguments (cl:list (hu.dwim.sdl::get+clear-sdl-error) 'rw-write result num)))
           result)))
   (common-lisp:undefined-function ()))

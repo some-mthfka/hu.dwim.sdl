@@ -210,7 +210,7 @@
   "SDL_RenderCopyF"
   "SDL_RenderCopyExF"
   "SDL_PeepEvents"
-  "SDL_NumSensors"       ; int, wiki says nothing, but this can't be negative, right?
+  "SDL_NumSensors"  ; int, wiki says nothing, but this can't be negative, right?
   "SDL_NumHaptics"
   "SDL_JoystickNumBalls"
   "SDL_GetNumTouchDevices"
@@ -218,11 +218,32 @@
   "SDL_HapticNewEffect"
   "SDL_HapticIndex"
   "SDL_Direct3D9GetAdapterIndex"
-  "SDL_LoadDollarTemplates" ; could be 0, check yourself: negative error code (or 0) on failure
+  "SDL_LoadDollarTemplates" ; could be 0, check yourself: "negative error code (or 0) on failure"
   "SDL_BlitSurface"
   "SDL_UpperBlitScaled"
   "SDL_UpperBlit"
-  "SDL_SoftStretch")
+  "SDL_SoftStretch"
+  "SDL_LinuxSetThreadPriority"
+  "SDL_AudioStreamPut"
+  "SDL_AudioStreamAvailable"            ; int, # of bytes, no error info on wiki
+  "SDL_AudioStreamGet"
+  "SDL_RenderFlush"
+  "SDL_LockTextureToSurface"
+  "SDL_GetTextureScaleMode"
+  "SDL_SetTextureScaleMode"
+  "SDL_GameControllerGetSensorData"         ; -1 if an error occurred.
+  "SDL_GameControllerSetSensorEnabled"      ; -1 if an error occurred.
+  "SDL_GameControllerGetNumTouchpadFingers" ; no error info on wiki
+  "SDL_GameControllerGetNumTouchpads"       ; no error info on wiki
+  "SDL_GameControllerNumMappings" ; int, no error info, guessing negative for errors
+  "SDL_JoystickSetVirtualHat"     ; -1 on error.
+  "SDL_JoystickSetVirtualButton"  ; -1 on error.
+  "SDL_JoystickSetVirtualAxis"    ; -1 on error.
+  "SDL_JoystickDetachVirtual"     ; -1 if an error occurred.
+  "SDL_JoystickAttachVirtual"     ; -1 if an error occurred.
+  "SDL_JoystickGetDeviceInstanceID" ; If the index is out of range, this function will return -1.
+  "SDL_JoystickGetDevicePlayerIndex" ; "-1 if it's not available", but probably like other joystick functions taking device_id
+  )
 
 ;; ** core / null is error
 
@@ -272,6 +293,7 @@
   "SDL_CreateWindowFrom"
   "SDL_CreateWindow"
   "SDL_CreateThread"
+  "SDL_CreateThreadWithStackSize"
   "SDL_CreateTextureFromSurface"
   "SDL_CreateTexture"
   "SDL_CreateSystemCursor"
@@ -312,57 +334,75 @@
   "SDL_GetCurrentVideoDriver"
   "SDL_GetCurrentAudioDriver"
   "SDL_GetAudioDriver"
-  "SDL_GetAudioDeviceName"
-  "SDL_GameControllerNameForIndex"
-  "SDL_GameControllerName"
-  "SDL_GameControllerGetStringForButton"
-  "SDL_GameControllerGetStringForAxis"
+  "SDL_GetAudioDeviceName"               ; NULL on error.
+  "SDL_GameControllerGetStringForButton" ; NULL if an invalid axis is specified
+  "SDL_GameControllerGetStringForAxis"   ; NULL if an invalid axis is specified
   "SDL_AndroidGetActivity"
   "SDL_GetWindowData" ; the sources indicate this that NULL is an error (when name is not found or NULL)
   "SDL_GameControllerGetJoystick" ; wiki unclear, sources: return NULL when the controller is NULL
+  "SDL_GetPreferredLocales"
+  "SDL_SIMDRealloc"
+  "SDL_SIMDAlloc"
+  "SDL_LoadFile"
+  "SDL_LoadFile_RW"
+  "SDL_NewAudioStream"           ; wiki is wrong on this, sources: NULL on error
+  "SDL_CreateShapedWindow"
+  "SDL_Metal_CreateView"         ; returns void *
+  "SDL_Metal_GetLayer"           ; void *, though wiki says nothing about errors
+  "SDL_RenderGetMetalLayer"      
+  "SDL_RenderGetMetalCommandEncoder"
+  "SDL_JoystickFromPlayerIndex"         ; NULL on failure;
+  "SDL_GameControllerFromPlayerIndex" ; guessing it's like "SDL_JoystickFromPlayerIndex"
+  "SDL_GameControllerMappingForIndex" ; NULL if the index is out of range.
+  "SDL_AndroidGetJNIEnv" ; void *, "0 on error"
   )
 
 ;; ** core / void
 
 (defl *return-void/core*              ; generated this in `ffi-type-transformer'
   "SDL_Quit" "SDL_QuitSubSystem" "SDL_GetVersion" "SDL_Delay"
+  "SDL_OnApplicationDidBecomeActive" "SDL_OnApplicationWillEnterForeground"
+  "SDL_OnApplicationDidEnterBackground" "SDL_OnApplicationWillResignActive"
+  "SDL_OnApplicationDidReceiveMemoryWarning" "SDL_OnApplicationWillTerminate"
   "SDL_DestroyRenderer" "SDL_DestroyTexture" "SDL_RenderPresent"
   "SDL_RenderGetScale" "SDL_RenderGetClipRect" "SDL_RenderGetViewport"
-  "SDL_RenderGetLogicalSize" "SDL_UnlockTexture" "SDL_LogSetOutputFunction"
-  "SDL_LogGetOutputFunction" "SDL_LogMessage" "SDL_LogCritical" "SDL_LogError"
-  "SDL_LogWarn" "SDL_LogInfo" "SDL_LogDebug" "SDL_LogVerbose" "SDL_Log"
-  "SDL_LogResetPriorities" "SDL_LogSetPriority" "SDL_LogSetAllPriority"
-  "SDL_UnloadObject" "SDL_ClearHints" "SDL_DelHintCallback"
-  "SDL_AddHintCallback" "SDL_HapticDestroyEffect" "SDL_HapticClose"
-  "SDL_FilterEvents" "SDL_DelEventWatch" "SDL_AddEventWatch"
-  "SDL_SetEventFilter" "SDL_FlushEvents" "SDL_FlushEvent" "SDL_PumpEvents"
-  "SDL_GameControllerClose" "SDL_GameControllerUpdate" "SDL_JoystickClose"
-  "SDL_JoystickUpdate" "SDL_JoystickGetGUIDString" "SDL_FreeCursor"
-  "SDL_SetCursor" "SDL_WarpMouseInWindow" "SDL_SetTextInputRect"
-  "SDL_StopTextInput" "SDL_StartTextInput" "SDL_SetModState"
-  "SDL_GL_DeleteContext" "SDL_GL_SwapWindow" "SDL_GL_GetDrawableSize"
-  "SDL_GL_ResetAttributes" "SDL_GL_UnloadLibrary" "SDL_DisableScreenSaver"
-  "SDL_EnableScreenSaver" "SDL_DestroyWindow" "SDL_SetWindowGrab"
-  "SDL_RestoreWindow" "SDL_MinimizeWindow" "SDL_MaximizeWindow"
-  "SDL_RaiseWindow" "SDL_HideWindow" "SDL_ShowWindow" "SDL_SetWindowBordered"
-  "SDL_GetWindowMaximumSize" "SDL_SetWindowMaximumSize"
-  "SDL_GetWindowMinimumSize" "SDL_SetWindowMinimumSize" "SDL_GetWindowSize"
-  "SDL_SetWindowSize" "SDL_GetWindowPosition" "SDL_SetWindowPosition"
-  "SDL_SetWindowIcon" "SDL_SetWindowTitle" "SDL_VideoQuit" "SDL_GetClipRect"
-  "SDL_UnlockSurface" "SDL_FreeSurface" "SDL_UnionRect" "SDL_CalculateGammaRamp"
-  "SDL_GetRGBA" "SDL_GetRGB" "SDL_FreePalette" "SDL_FreeFormat"
-  "SDL_CloseAudioDevice" "SDL_CloseAudio" "SDL_UnlockAudioDevice"
-  "SDL_UnlockAudio" "SDL_LockAudioDevice" "SDL_LockAudio" "SDL_MixAudioFormat"
-  "SDL_MixAudio" "SDL_FreeWAV" "SDL_PauseAudioDevice" "SDL_PauseAudio"
-  "SDL_AudioQuit" "SDL_FreeRW" "SDL_DetachThread" "SDL_WaitThread"
-  "SDL_DestroyCond" "SDL_DestroySemaphore" "SDL_DestroyMutex" "SDL_ClearError"
-  "SDL_AtomicUnlock" "SDL_AtomicLock" "SDL_ResetAssertionReport"
-  "SDL_SetAssertionHandler" "SDL_SetMainReady" "SDL_qsort" "SDL_free"
-  ;; also void, but i have old specs, so they didn't show up in `ffi-type-transformer'
-  "SDL_Vulkan_UnloadLibrary" "SDL_Vulkan_GetDrawableSize" "SDL_TriggerBreakpoint"
-  "SDL_SetWindowsMessageHook" "SDL_SensorUpdate" "SDL_SensorClose"
-  "SDL_LogMessageV" "SDL_ClearQueuedAudio" "SDL_SetWindowResizable"
-  "SDL_iPhoneSetEventPump")
+  "SDL_RenderGetLogicalSize" "SDL_UnlockTexture" "SDL_Metal_GetDrawableSize"
+  "SDL_Metal_DestroyView" "SDL_LogSetOutputFunction" "SDL_LogGetOutputFunction"
+  "SDL_LogMessage" "SDL_LogCritical" "SDL_LogError" "SDL_LogWarn" "SDL_LogInfo"
+  "SDL_LogDebug" "SDL_LogVerbose" "SDL_Log" "SDL_LogResetPriorities"
+  "SDL_LogSetPriority" "SDL_LogSetAllPriority" "SDL_UnloadObject"
+  "SDL_ClearHints" "SDL_DelHintCallback" "SDL_AddHintCallback"
+  "SDL_HapticDestroyEffect" "SDL_HapticClose" "SDL_FilterEvents"
+  "SDL_DelEventWatch" "SDL_AddEventWatch" "SDL_SetEventFilter" "SDL_FlushEvents"
+  "SDL_FlushEvent" "SDL_PumpEvents" "SDL_GameControllerClose"
+  "SDL_GameControllerUpdate" "SDL_GameControllerSetPlayerIndex"
+  "SDL_SensorUpdate" "SDL_SensorClose" "SDL_UnlockSensors" "SDL_LockSensors"
+  "SDL_JoystickClose" "SDL_JoystickUpdate" "SDL_JoystickGetGUIDString"
+  "SDL_JoystickSetPlayerIndex" "SDL_UnlockJoysticks" "SDL_LockJoysticks"
+  "SDL_FreeCursor" "SDL_SetCursor" "SDL_WarpMouseInWindow"
+  "SDL_SetTextInputRect" "SDL_StopTextInput" "SDL_StartTextInput"
+  "SDL_SetModState" "SDL_GL_DeleteContext" "SDL_GL_SwapWindow"
+  "SDL_GL_GetDrawableSize" "SDL_GL_ResetAttributes" "SDL_GL_UnloadLibrary"
+  "SDL_DisableScreenSaver" "SDL_EnableScreenSaver" "SDL_DestroyWindow"
+  "SDL_SetWindowGrab" "SDL_RestoreWindow" "SDL_MinimizeWindow"
+  "SDL_MaximizeWindow" "SDL_RaiseWindow" "SDL_HideWindow" "SDL_ShowWindow"
+  "SDL_SetWindowResizable" "SDL_SetWindowBordered" "SDL_GetWindowMaximumSize"
+  "SDL_SetWindowMaximumSize" "SDL_GetWindowMinimumSize"
+  "SDL_SetWindowMinimumSize" "SDL_GetWindowSize" "SDL_SetWindowSize"
+  "SDL_GetWindowPosition" "SDL_SetWindowPosition" "SDL_SetWindowIcon"
+  "SDL_SetWindowTitle" "SDL_VideoQuit" "SDL_SetYUVConversionMode"
+  "SDL_GetClipRect" "SDL_UnlockSurface" "SDL_FreeSurface" "SDL_UnionRect"
+  "SDL_CalculateGammaRamp" "SDL_GetRGBA" "SDL_GetRGB" "SDL_FreePalette"
+  "SDL_FreeFormat" "SDL_SIMDFree" "SDL_CloseAudioDevice" "SDL_CloseAudio"
+  "SDL_UnlockAudioDevice" "SDL_UnlockAudio" "SDL_LockAudioDevice"
+  "SDL_LockAudio" "SDL_ClearQueuedAudio" "SDL_MixAudioFormat" "SDL_MixAudio"
+  "SDL_FreeAudioStream" "SDL_AudioStreamClear" "SDL_FreeWAV"
+  "SDL_PauseAudioDevice" "SDL_PauseAudio" "SDL_AudioQuit" "SDL_FreeRW"
+  "SDL_DetachThread" "SDL_WaitThread" "SDL_DestroyCond" "SDL_DestroySemaphore"
+  "SDL_DestroyMutex" "SDL_ClearError" "SDL_MemoryBarrierAcquireFunction"
+  "SDL_MemoryBarrierReleaseFunction" "SDL_AtomicUnlock" "SDL_AtomicLock"
+  "SDL_ResetAssertionReport" "SDL_SetAssertionHandler" "SDL_SetMainReady"
+  "SDL_qsort" "SDL_GetMemoryFunctions" "SDL_free")
 
 ;; ** core / booleans (no error checking)
 
@@ -416,7 +456,23 @@
   "SDL_JoystickGetAttached"          ; call SDL_GetError() for more information.
   "SDL_RenderIsClipEnabled" ; SDL_TRUE if clipping is enabled or SDL_FALSE if not; call SDL_GetError() for more information.
   "SDL_RenderGetIntegerScale" ; "SDL_TRUE if integer scales are forced or SDL_FALSE if not and on failure"
-  "SDL_IsDevicePresent" ; looked this up in the sources, wiki has nothing on it
+  "SDL_IsDevicePresent"  ; looked this up in the sources, wiki has nothing on it
+  ;; also, checked on wiki:
+  "SDL_HasColorKey"
+  "SDL_HasSurfaceRLE"
+  "SDL_HasNEON"
+  "SDL_HasARMSIMD"
+  "SDL_HasAVX512F"
+  "SDL_IsTablet"
+  "SDL_IsShapedWindow"
+  "SDL_GameControllerHasLED"
+  "SDL_JoystickHasLED"
+  "SDL_GameControllerHasSensor"
+  "SDL_GameControllerHasButton"
+  "SDL_GameControllerHasAxis"
+  "SDL_GameControllerIsSensorEnabled"
+  "SDL_JoystickGetAxisInitialState"
+  "SDL_JoystickIsVirtual"
   )
 
 ;; ** core / boolean check errors (on SDL_FALSE)
@@ -457,30 +513,31 @@
 
 (defl *return-0-on-failure/core*       ; checked all of these manually on wiki
   ;; checked all of these manually on wiki:
-  "SDL_SaveDollarTemplate"
-  "SDL_RecordGesture"
-  "SDL_WaitEventTimeout"
-  "SDL_WaitEvent"
+  "SDL_WriteU8" ; size_t, "Returns 1 on success or 0 on failure; call SDL_GetError() for more information."
   "SDL_WriteBE16"
   "SDL_WriteBE32"
   "SDL_WriteBE64"
   "SDL_WriteLE16"
   "SDL_WriteLE32"
   "SDL_WriteLE64"
-  "SDL_WriteU8"
-  "SDL_RWread"
-  "SDL_TLSCreate"
-  "SDL_SaveAllDollarTemplates"
-  "SDL_GetNumTouchFingers"
-  ;; "SDL_JoystickGetGUID" ; TODO returns struct
-  ;; "SDL_JoystickGetDeviceGUID" ; TODO returns struct
+  "SDL_WaitEventTimeout" ; int, "Returns 1 on success or 0 if there was an error while waiting for events; call"
+  "SDL_WaitEvent" ; int, "Returns 1 on success or 0 if there was an error while waiting for events; call"
+  "SDL_RecordGesture" ; int, "Returns 1 on success or 0 if the specified device could not be found"
+  "SDL_TLSCreate" ; SDL_TLSID, "Returns the newly created thread local storage identifier or 0 on error."
+  "SDL_SaveDollarTemplate" ; int, "Returns 1 on success or 0 on failure; call SDL_GetError() for more information."
+  "SDL_SaveAllDollarTemplates" ; int, "0 on failure;"
+  "SDL_GetNumTouchFingers" ; Returns the number of active fingers for a given touch device on success or 0 on failure;
   "SDL_HapticQuery" ; Returns a list of supported haptic features in bitwise manner (OR'd), or 0 on failure; 
-  "SDL_GetWindowID"
-  "SDL_GetTouchDevice"
-  "SDL_AndroidGetJNIEnv"
-  "SDL_AndroidGetExternalStorageState"
-  "SDL_AddTimer"
+  "SDL_GetWindowID" ; uint32, "0 on failure"
+  "SDL_GetTouchDevice" ; SDL_TouchID, "0 if the index is invalid;"
+  "SDL_AndroidGetExternalStorageState" ; int, "0 on failure"
+  "SDL_AddTimer" ; Returns a timer ID or 0 if an error occurs; call SDL_GetError() for more information.
   "SDL_GetKeyFromScancode" ; sources indicate that if scancode is not found, 0 is returned and error is set
+  "SDL_JoystickGetDeviceProductVersion" ; If called on an invalid index, this function returns zero
+  "SDL_JoystickGetDeviceProduct" ; If called on an invalid index, this function returns zero
+  "SDL_JoystickGetDeviceVendor" ; If called on an invalid index, this function returns zero
+  ;; this one is kind of questionable, but you can probably keep track where you are and avoid this error:
+  "SDL_RWread" ; Returns the number of objects read, or 0 at error or end of file; call SDL_GetError() for more information.
   )
 
 ;; ** core / string starts with error
@@ -492,6 +549,7 @@
 
 ;; ** core / return enum error check
 
+;; multiple wrong return values are supported (member is used for checking)
 (defparameter *return-enum-check-invalid/core*
   '(("SDL_SensorGetType" "SDL_SENSOR_INVALID") ; "`SDL_SENSOR_INVALID` if `sensor` is NULL."
     ("SDL_SensorGetDeviceType" "SDL_SENSOR_INVALID") ; "if `device_index` is out of range."
@@ -502,10 +560,11 @@
     ("SDL_GetKeyFromName" "SDLK_UNKNOWN")              ; for more information. 
     ("SDL_JoystickCurrentPowerLevel" "SDL_JOYSTICK_POWER_UNKNOWN") ; a bit questionable that this should be here really
     ;; "On failure (like the given Controller axis doesn't exist on the device) [...] SDL_CONTROLLER_BINDTYPE_NONE"
-    ;; ("SDL_GameControllerGetBindForButton" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
-    ;; ("SDL_GameControllerGetBindForAxis" "SDL_CONTROLLER_BINDTYPE_NONE") ; TODO uncomment (used to be a struct)
     ("SDL_GameControllerGetButtonFromString" "SDL_CONTROLLER_AXIS_INVALID") ; "if no match was found."
     ("SDL_GameControllerGetAxisFromString" "SDL_CONTROLLER_AXIS_INVALID") ; "if no match was found."
+    ;; Return 0 on success, SDL_INVALID_SHAPE_ARGUMENT on an invalid shape argument, or SDL_NONSHAPEABLE_WINDOW if the SDL_Window given does not reference a valid shaped window.
+    ("SDL_SetWindowShape" "SDL_INVALID_SHAPE_ARGUMENT" "SDL_NONSHAPEABLE_WINDOW")
+    ("SDL_JoystickGetDeviceType" "SDL_JOYSTICK_TYPE_UNKNOWN") ; "If called on an invalid index"
     ))
 
 ;; ** core / return constants indicating errors
@@ -536,7 +595,7 @@
   ;; arithmetic operations
   "SDL_acos" "SDL_asin" "SDL_atan" "SDL_atan2" "SDL_sin" "SDL_cos" "SDL_pow"
   "SDL_log"
-  ;; no error checking needed for sure
+  ;; no error checking needed for sure (all manually checked)
   "SDL_GetTicks"
   "SDL_WasInit" ; not a bool, "returns the initialization status of the specified subsystems"
   "SDL_GetThreadID"
@@ -567,6 +626,7 @@
   "SDL_GetGlobalMouseState"
   "SDL_GetEventState"
   "SDL_GetError"
+  "SDL_GetErrorMsg" ;; allows the caller to copy the error <...> but otherwise operates exactly the same as SDL_GetError().
   "SDL_GetDefaultAssertionHandler"
   "SDL_GetCPUCount"
   "SDL_GetCPUCacheLineSize"
@@ -587,11 +647,39 @@
   "SDL_GL_GetProcAddress" ; "Some drivers return NULL if a function isn't supported, but you can't count on this behavior."
   "SDL_GL_GetSwapInterval" ; "If [...] can't determine [...] isn't a valid current context [...] return 0 as a safe default."
   "SDL_GetRelativeMouseState" ; wiki says nothing about errors, sources have no error handling
-  "SDL_GetAudioStatus" ; wiki shows gibberish, sources: returns enum, no error checks
-  "SDL_GetAudioDeviceStatus"            ; wiki shows gibberish
-  "SDL_ComposeCustomBlendMode"    ; no checks apparently, sources indicate so too
+  "SDL_ComposeCustomBlendMode"   ; no checks apparently, sources indicate so too
   "SDL_JoystickGetAxis" ; Returns a 16-bit signed integer representing the current position of the axis or 0 on failure
   "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
+  "SDL_SetMemoryFunctions"
+  "SDL_GetNumAllocations" ; int, takes no args
+  "SDL_GetShapedWindowMode"
+  "SDL_GameControllerGetPlayerIndex" ; -1 if it's not available.
+  "SDL_JoystickGetPlayerIndex" ; -1 if it's not available.
+  "SDL_GameControllerRumbleTriggers" ; -1 if trigger rumble isn't supported
+  "SDL_GameControllerRumble" ; -1 if rumble isn't supported
+  "SDL_JoystickRumbleTriggers"
+  "SDL_JoystickRumble"
+  "SDL_GameControllerSetLED"
+  "SDL_JoystickSetLED"
+  "SDL_GameControllerGetProductVersion" ; "zero if unavailable"
+  "SDL_GameControllerGetProduct"        ; "zero if unavailable"
+  "SDL_GameControllerGetVendor"         ; "zero if unavailable"
+  "SDL_JoystickGetSerial"
+  "SDL_JoystickGetProductVersion"
+  "SDL_JoystickGetProduct"
+  "SDL_JoystickGetVendor"
+  "SDL_GetTouchDeviceType"
+  "SDL_GameControllerMappingForDeviceIndex" ; NULL if no mapping is available.
+  "SDL_GameControllerNameForIndex" ; NULL if there is no name or the index is invalid.
+  "SDL_GameControllerName" ; NULL if there is no name or the identifier passed is invalid.
+  "SDL_GameControllerGetType"
+  "SDL_GameControllerGetSerial"
+  "SDL_GameControllerTypeForIndex" ; no error info
+  ;; some enums (not all, and no error checking):
+  "SDL_GetAudioStatus" ; wiki shows gibberish, sources: returns enum, no error checks
+  "SDL_GetDisplayOrientation" ; SDL_ORIENTATION_UNKNOWN if it isn't available.
+  "SDL_GetYUVConversionModeForResolution" ; no details on wiki, source: no apparent fatal errors
+  "SDL_GetYUVConversionMode" ; no details on wiki, source: no apparent fatal errors
   ;; no error checking needed, but I ain't that certain, or the wiki isn't
   "SDL_GetQueuedAudioSize" ; uint32 Returns 0 by default or if device not found, but the size can be 0 too, couldn't it?
   ;; "SDL_IsDeviceDisconnected" ; wiki shows gibberish, can't find the source definition for this, see SDL_IsDevicePresent
@@ -607,7 +695,13 @@
   "SDL_utf8strlcpy" "SDL_strlcpy" "SDL_strlen" "SDL_wcslcat" "SDL_wcslcpy"
   "SDL_wcslen" "SDL_memcmp" "SDL_memmove" "SDL_memcpy" "SDL_memset"
   "SDL_tolower" "SDL_toupper" "SDL_isspace" "SDL_isdigit" "SDL_abs" "SDL_setenv"
-  "SDL_getenv" "SDL_realloc" "SDL_calloc" "SDL_malloc" "strerror")
+  "SDL_getenv" "SDL_realloc" "SDL_calloc" "SDL_malloc" "strerror" "SDL_tanf"
+  "SDL_tan" "SDL_sqrtf" "SDL_scalbnf" "SDL_powf" "SDL_log10f" "SDL_log10"
+  "SDL_logf" "SDL_fmodf" "SDL_fmod" "SDL_truncf" "SDL_trunc" "SDL_floorf"
+  "SDL_fabsf" "SDL_expf" "SDL_exp" "SDL_copysignf" "SDL_ceilf" "SDL_atan2f"
+  "SDL_atanf" "SDL_asinf" "SDL_acosf" "SDL_utf8strlen" "SDL_strtokr"
+  "SDL_wcsncasecmp" "SDL_wcscasecmp" "SDL_wcsncmp" "SDL_wcscmp" "SDL_wcsstr"
+  "SDL_wcsdup" "SDL_crc32" "SDL_islower" "SDL_isupper")
 
 ;; * SDL TTF
 
@@ -624,7 +718,9 @@
   "TTF_SizeUTF8"
   "TTF_SizeText"
   "TTF_GlyphMetrics"
-  "TTF_GetFontKerningSize")
+  "TTF_GetFontKerningSize" ; deprecated, not exporting it, as it can yield wrong results
+  "TTF_GetFontKerningSizeGlyphs" ; sources: -1 on error
+  )
 
 ;; ** ttf / null is error
 
@@ -834,6 +930,8 @@
 
 (defl *return-negative-on-failure/image*
   ;; these weren't in the docs, the sources have -1 on error
+  "IMG_SaveJPG"
+  "IMG_SaveJPG_RW"
   "IMG_SavePNG_RW"
   "IMG_SavePNG")
 
@@ -858,6 +956,7 @@
   "IMG_LoadXPM_RW"
   "IMG_LoadXV_RW"
   "IMG_ReadXPMFromArray"
+  "IMG_LoadSVG_RW" ; looked up in the sources
   ;; these weren't in the docs, assuming the same:
   "IMG_LoadWEBP_RW"
   "IMG_LoadTextureTyped_RW"
@@ -866,8 +965,9 @@
 
 ;; ** image / bool-like ints, 0 for false
 
-;; bool-like ints, 0 for false, 1 for true, not errors
+;; bool-like ints, 0 for false, 1 for true, no errors
 (defl *return-bool-like-0-for-false/image*
+  "IMG_isSVG"
   "IMG_isBMP"
   "IMG_isCUR"
   "IMG_isGIF"
@@ -1010,5 +1110,6 @@
 ;; ;; (defun-with-passed-return-values hu.dwim.sdl/ttf:ttf-size- * * :int :int)
 
 ;; (ttf-size-text* font "Hello World!")
+
 
 

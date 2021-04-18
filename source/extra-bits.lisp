@@ -49,10 +49,13 @@ manually."
 
 (defun prologue-from-core ()
   (unless (eql *package* (find-package :hu.dwim.sdl/core))
+    ;; import everything from core (to the current package), because other
+    ;; packages rely on its definitions
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (let ((skip-list (list (ffi-name-transformer "SDL_Quit" :function)
                               (ffi-name-transformer "SDL_Init" :function)
                               (ffi-name-transformer "SDL_WasInit" :function)
+                              (ffi-name-transformer "SDL_LoadBMP_RW" :function)
                               (ffi-name-transformer "SDL_PATCHLEVEL" :constant))))
          (do-symbols (symbol (find-package :hu.dwim.sdl/core))
            ;; to avoid function-pointer error, or if anything else like that
@@ -103,7 +106,7 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
         collect key* into supplied-slots
         collect (list key* value) into key-value-pairs
         finally (progn
-                  (unless optional-p ; error check
+                  (unless optional-p ; supplied keys check
                     (let ((diff (set-difference slot-names supplied-slots)))
                       (when diff (error (concat "These keys weren't supplied: ~a. "
                                                 "Use ~a if you don't want this check.")
@@ -183,7 +186,10 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
        (mapcar #'first (cddr (getf *known-struct-defs* (second typespec))))))))
 
 (defun maybe-generate-maker-and-with-macros (form)
-  (when (member (first form) '(cffi:defctype cffi:defcstruct))
+  (when (and (member (first form) '(cffi:defctype cffi:defcstruct))
+             ;; avoiding redefinition warnings (maybe build a dedicated list for this):
+             (not (tree-equal form '(cffi:defcstruct (hu.dwim.sdl/core::audio-cvt :size 0))
+                              :test #'equal)))
     (multiple-value-bind (struct-name name slot-names)
         (case (first form)
           (defcstruct (struct-info-from-defcstruct form))
@@ -201,8 +207,8 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                                  with-macro-name with-macro-name*
                                  with*macro-name with*macro-name*)))
           (list
-           `(eval-when (:compile-toplevel :load-toplevel :execute) ; avoid redefinition warnings:
-              (mapcar #'fmakunbound ',all-macros))
+           `(eval-when (:compile-toplevel :load-toplevel :execute)
+              (mapcar #'fmakunbound ',all-macros)) ; avoid redefinition warnings
            `(def-make-struct-macro ,make-macro-name ,(list :struct struct-name) ,slot-names nil)
            `(def-make-struct-macro ,make*macro-name ,(list :struct struct-name) ,slot-names t)
            `(def-with-struct-macro ,with-macro-name ,(list :struct struct-name) ,slot-names nil)
@@ -258,7 +264,7 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 #+nil
 (hu.dwim.sdl/core:with-rect (data :x 0 :y 0 :w 10 :h 10) data)
 
-;; * Passed return values macro macro generation
+;; * Passed return values macro generation
 
 (defun maybe-generate-passed-return-value-macro (form)
   (when (eql 'cffi:defcfun (first form))

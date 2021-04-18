@@ -110,7 +110,9 @@ so you will see the previous one: so make sure to keep everything cleaned."
 #+nil
 (hu.dwim.sdl/core:get-scancode-from-name "A") ; should return an integer
 #+nil
-(hu.dwim.sdl/core:get-scancode-from-name "AA") ; shoudl signal a condition
+(hu.dwim.sdl/core:get-scancode-from-name "AA") ; should signal a condition
+#+nil
+(hu.dwim.sdl/core:set-window-shape (cffi:null-pointer) (cffi:null-pointer) (cffi:null-pointer))
 
 (defun generate-type-expand-defmethod/enum-checked
     (actual-type custom-type original-function-name new-function-name condition-name)
@@ -119,13 +121,14 @@ so you will see the previous one: so make sure to keep everything cleaned."
      ;; probably.  And the actual type is an enum, which is not right to convert
      ;; to either (yields a symbol).
      `(let ((return-value ,value))
-        (when (eql return-value
-                   ;; bake the value of the constant right in here, not even the symbol:
-                   ,,(symbolicate (ffi-name-transformer
-                                   (second (assoc original-function-name
-                                                  *return-enum-check-invalid/all*
-                                                  :test #'equal))
-                                   :constant)))
+        (when (or ; bake the value of the constant right in here, not even the symbol:
+               ,@(mapcar (lambda (x) `(eql return-value ,(if (boundp x) (symbol-value x) x)))
+                         ',(mapcar (compose
+                                    #'symbolicate
+                                    (rcurry #'ffi-name-transformer :constant))
+                                   (rest (assoc original-function-name
+                                                *return-enum-check-invalid/all*
+                                                :test #'equal)))))
           (error ',',condition-name
                  :format-control "SDL call failed: ~S.~%~%~a returned ~a (of type ~a)."
                  :format-arguments (list (get+clear-sdl-error) ,',new-function-name
@@ -279,7 +282,7 @@ so you will see the previous one: so make sure to keep everything cleaned."
         (name (when (consp context) (second context))))
     (when (and (eql (first context) :function)
                (eql (third context) :return-type))
-      ;; (when (eql type-specifier :void) (push name *void-stuff*))
+      ;; (when (eql type-specifier :void) (push name *void-thing*))
       (catch-unknown-names name))
     (flet ((convert-p (conversion-list &optional &key (check-type nil) (key #'identity))
              (when (and name

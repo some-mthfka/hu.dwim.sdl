@@ -12,15 +12,18 @@
        (declare (ignorable str))
        ,@body)))
 
-(defun without-prefix (name)
-  (regex-replace "^(SDL|IMG|TTF|GFX)_" name ""))
-
 (defparameter *abbrevs*
   ;; order matters, e.g. RGBA needs to run before RGB, so just sort by length
-  (sort (list "SDL" "SDL2" "IMG" "TTF" "GFX"
+  (sort (list "SDL2" "SDL" "IMG" "TTF" "GFX"
               "TLS" "CAS" "CVT"
               "UNICODE" "UTF8"
-              "3D" "CPU" "MMX" "RAM" "AVX" "AVX2" "AVX512F" "RLE" "RDTSC"
+              "PRI"
+              "(x|X|u)(8|16|32|64).?"
+              "3D" "CPU" "MMX" "RAM" "AVX" "AVX2" "AVX512F" "RLE" "RDTSC" "SIMD"
+              "YUV_CONVERSION_MODE" ; a capitalized enum name, for some reason
+              "X1" "X2" "LED"
+              "X11" "DPI"
+              "URL"
               "3DNow" "ARMSIMD" "AltiVec" "NEON"
               "(L|B)E[0-9][0-9]" "SSE[0-9]*"
               "RGBA" "RGB" "YUV"
@@ -29,7 +32,7 @@
               "DUMMY" "ANON" "UNION" "STRUCT" "ENUM"
               "OS" "FILE"
               "ICO" "CUR" "BMP" "GIF" "JPG" "LBM" "PCX" "PNG" "PNM" "TIF"
-              "XPM" "XCF" "XV" "WEBP" "TGA")
+              "XPM" "XCF" "XV" "WEBP" "TGA" "SVG")
         #'>
         :key #'length))
 
@@ -55,22 +58,20 @@
     (nreplace "_[A-Z][a-z]" (rx-lambda (string-downcase str)))))
 
 (defun table-replace-p (name)
-  (second (find name '(("SDL_Log" "LOG")
-                       ("SDL_log" "LOG*"))
+  (second (find name '(("SDL_log" "LOG*")
+                       ("SDL_PRIX64" "+PRI-X64*+"))
                 :key #'first
                 :test #'equal)))
 
 (defun member* (x list) (member x list :test #'equal))
 
-(defparameter *questionable-names* nil
-  "If you generate names for other sdl modules, make sure to check this variable
-after running, it makes it easy to catch off the abbreviations.  Best kept
-always NIL, or add exceptions to `catch-questionable-names' if approprate.")
+(defparameter *questionable-names* nil)
 
 (defun catch-questionable-names (name)
   (when (and (cl-ppcre:scan "-.-" name)
              (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name))
-             (not (member* name *questionable-names*))) ; easier than adding hooks to perform
+             (not (member name '("+HAVE-M-PI+" "--F-RECT")
+                          :test #'equal)))
     (push name *questionable-names*))
   name)
 
@@ -78,13 +79,21 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
 
 (defun catch-unknown-names (name)
   (unless (some (curry #'member* name) *all-conversion-lists*)
-    ;; (member* name *unknown-names*)
     (push name *unknown-names*)))
 
+(defun without-prefix (name)
+  (regex-replace
+   "^(SDL|IMG|TTF|GFX)K_"
+   (regex-replace "^(_SDL|_IMG|_TTF|_GFX)_" (regex-replace "^(SDL|IMG|TTF|GFX)_" name "")
+                  "_")
+   "K_"))
+
+(defun preprocess-name (name)
+  (caps-replace (without-prefix (substitute #\_ #\- name))))
+
 (defun ffi-name-transformer (name kind &key &allow-other-keys)
-  (declare (ignorable kind))
   (check-type name string)
-  (let ((name* (caps-replace (without-prefix (substitute #\_ #\- name)))))
+  (let ((name* (preprocess-name name)))
     (labels ((_->- (name) (substitute #\- #\_ name))
              (from-camel (name) (cffi/c2ffi:camelcase-to-dash-separated name))
              (muff (name char) (concatenate 'string char name char))
@@ -156,5 +165,7 @@ always NIL, or add exceptions to `catch-questionable-names' if approprate.")
   (check :function "SDL_WriteLE16" "WRITE-LE16")
   (check :function "SDL_HasSSE41" "HAS-SSE41")
   (check :function "SDL_GetRGBA" "GET-RGBA")
+  (check :constant "SDL_VIDEO_X11_XRANDR" "+VIDEO-X11-XRANDR+")
+  (check :function "SDL_GetYUVConversionMode" "GET-YUV-CONVERSION-MODE")
   (check :struct "ANON-STRUCT-1" "ANON-STRUCT-1")
   (check :enum "ANON-ENUM-10" "ANON-ENUM-10"))
