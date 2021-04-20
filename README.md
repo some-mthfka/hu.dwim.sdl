@@ -72,9 +72,9 @@ clashes were SDL to introduce something that's named, say, `with-rect`. That, I
 think, is very unlikely, but in case it happens, the name of the newly
 introduced offending function will be renamed (suffixed, probably).
 
-#### `<function-name>*`, `with-<struct-name>`, `with*<struct-name>`, `with-<struct-name>*` etc.
+#### `<function-name>*`, `with-<smth>`, `with*<smth>`, `with-<smth>*` etc.
 
-See below for what all these are.
+See the *Convenience macros and functions* for info on these.
 
 #### **TODO** `%<original-function-name>`
 
@@ -86,8 +86,7 @@ another file could be generated with its own CFFI options.
  
 #### (maybe) `<function-name>-gc`
 
-With `<function-name>*gc` standing for a garbage collected version of
-`<function-name>*`. There aren't any GC additions so far.
+There aren't any GC additions so far, though.
 
 ### Exports
 
@@ -201,12 +200,12 @@ becomes simply
 ```
 
 For the list of functions for which this is done (and for a place to add more),
-see [passed-return-value-lists.lisp](source/passed-return-value-lists.lisp).
+see [other-lists.lisp](source/passed-return-value-lists.lisp).
 
 #### `make-<struct-name>` and `make*<struct-name>`: construction macros
 
-In place of `cffi:foreign-alloc` + cffi:with-foreign-slots and `setf`'ing the
-slots yourself, you can just do this:
+In place of `cffi:foreign-alloc` + `cffi:with-foreign-slots` and `setf`'ing the
+slots yourself, you can just do this instead:
 
 ```
 (let ((r (sdl:make-rect :x 0 :y 0 :w 10 :h 10)))
@@ -244,12 +243,26 @@ These are just like `with-<struct-name>` and `with*<struct-name>` except they
 are for multiple forms:
 
 ``` 
-(sdl:with-point* ((a :x 0 :y 0)
-                  (b :x 5 :y 5))
+(sdl:with-point* ((point-a :x 0 :y 0)
+                  (point-b :x 5 :y 5))
   ;; ...
   )
 ```
 
+#### `with-<SLD_Create<rest of the function name>>`
+
+Example: `(with-window w (<args to create-window>) <body>)` binds `w` to the
+result of `create-window`, executes the body in `unwind-protect` clause, which
+finishes with a call to `destroy-window`.
+
+The name of the macro is built by throwing away the `SDL_Create` part of the
+function, except in these cases:
+- `SDL_GL_CreateContext` --> `with-gl-context`
+- `SDL_Metal_CreateView` --> `with-metal-view`.
+
+See [other-lists.lisp](source/passed-return-value-lists.lisp) for the list of
+these macros.
+ 
 #### `with-sdl-slots`
 
 This macro lets you easily access slots of a struct. Here's an example:
@@ -258,17 +271,36 @@ This macro lets you easily access slots of a struct. Here's an example:
 (defpackage #:sdl2-example
   (:use :cl)
   (:local-nicknames (sdl hu.dwim.sdl/core))
-  (:import-from #:hu.dwim.sdl
-                #:with-sdl-slots))
+  (:import-from #:hu.dwim.sdl #:with-sdl-slots #:with-sdl-slots*))
 
 (in-package :sdl2-example)
 
-(sdl:with-point (a :x 0 :y 5)
-  (with-sdl-slots ((x y) a (:struct rect))
-    (values x y)))
+(sdl:with-point (p :x 0 :y 1)
+  (with-sdl-slots ((x y) p point)
+    (values x y))) ; => 0, 1
 ```
 
-With `cffi:with-foreign-slots` you would have to either do this:
+Just like with `cffi:with-foreign-slots`, you can use `(:pointer <type>)`
+syntax:
+
+```
+(sdl:with-point (p :x 0 :y 1)
+  (with-sdl-slots (((x0 x) (y0 (:pointer y))) p point)
+    (values x0 y0))) ; => 0, #.(SB-SYS:INT-SAP #X7F9AEE437FF4)
+```
+
+Multiplexed version is also available:
+
+```
+(sdl:with-point* ((point-a :x 0 :y 1)
+                  (point-b :x 2 :y 3))
+  (with-sdl-slots* ((((x0 x) (y0 y)) point-a point)
+                    (((x1 x) (y1 y)) point-b point))
+    (values x0 y0 x1 y1))) ; => 0, 1, 2, 3
+```
+
+Note that with `cffi:with-foreign-slots` you would have to name the package like
+this:
  
 ```
 (sdl:with-point (a :x 0 :y 5)
@@ -276,14 +308,10 @@ With `cffi:with-foreign-slots` you would have to either do this:
     (values sdl:x sdl:y)))
 ```
 
-or import `x`, `y` and `rect` to access them without the package-resolving
-prefix.
-
 In contrast, `with-sdl-slots` finds `rect` in one of the sdl packages at
 macroexpansion time, assumes `x` and `y` to be in the package where `rect` was
 found and sets up a `symbol-macrolet` to replace `x` with `hu.dwim.sdl/core:x`
-and `y` with `hu.dwim.sdl/core:y`, while internally still using
-`cffi:with-foreign-slots`.
+and `y` with `hu.dwim.sdl/core:y`.
 
 ### Example
 
@@ -298,30 +326,26 @@ The following example opens a window and shows a rectangle for two seconds:
 
 (progn
   (sdl:init sdl:+init-video+)
-  (let* ((window (sdl:create-window "a square"
-                                    sdl:+windowpos-undefined+
-                                    sdl:+windowpos-undefined+
-                                    0 0
-                                    (logior sdl:+window-resizable+
-                                            sdl:+window-fullscreen-desktop+)))
-         (renderer (sdl:create-renderer window -1 sdl:+renderer-accelerated+)))
-    (dotimes (time 120)
-      ;; clear
-      (sdl:set-render-draw-color renderer 255 255 255 255)
-      (sdl:render-clear renderer)
-      ;; draw a rectangle
-      (sdl:set-render-draw-color renderer 0 0 0 255)
-      (multiple-value-bind (w h) (sdl:get-window-size* window)
-        (sdl:with-rect (rect :x (- (floor w 2) 100)
-                             :y (- (floor h 2) 100)
-                             :w 200
-                             :h 200)
-          (sdl:render-draw-rect renderer rect)))
-      ;; show
-      (sdl:render-present renderer)
-      (sdl:delay 16))
-    (sdl:destroy-renderer renderer)
-    (sdl:destroy-window window))
+  (sdl:with-window window ("a square"
+                           sdl:+windowpos-undefined+ sdl:+windowpos-undefined+
+                           0 0
+                           (logior sdl:+window-resizable+ sdl:+window-fullscreen-desktop+))
+    (sdl:with-renderer renderer (window -1 sdl:+renderer-accelerated+)
+      (dotimes (time 120)
+        ;; clear
+        (sdl:set-render-draw-color renderer 255 255 255 255)
+        (sdl:render-clear renderer)
+        ;; draw a rectangle
+        (sdl:set-render-draw-color renderer 0 0 0 255)
+        (multiple-value-bind (w h) (sdl:get-window-size* window)
+          (sdl:with-rect (rect :x (- (floor w 2) 100)
+                               :y (- (floor h 2) 100)
+                               :w 200
+                               :h 200)
+            (sdl:render-draw-rect renderer rect)))
+        ;; show
+        (sdl:render-present renderer)
+        (sdl:delay 16))))
   (sdl:quit))
 ```
 

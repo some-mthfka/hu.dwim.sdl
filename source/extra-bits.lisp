@@ -123,9 +123,10 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
          (multiple-value-bind (,supplied-slots ,pairs)
              (scan-keys ,rest-sym ',name ',slot-names ,optional-p)
            `(let ((,',ptr (cffi:foreign-alloc ',',type-name)))
-              (with-foreign-slots (,,supplied-slots ,',ptr ,',type-name)
-                (setf ,@(loop for (sn sv) in ,pairs
-                              appending `(,sn ,sv))))
+              ,(when ,supplied-slots
+                 `(with-foreign-slots (,,supplied-slots ,',ptr ,',type-name)
+                    (setf ,@(loop for (sn sv) in ,pairs
+                                  appending `(,sn ,sv)))))
               ,',ptr))))))
 
 (defmacro def-with-struct-macro (name type-name slot-names optional-p)
@@ -185,15 +186,18 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
        (mapcar #'first (cddr (getf *known-struct-defs* (second typespec))))))))
 
 (defun maybe-generate-maker-and-with-macros (form)
-  (when (and (member (first form) '(cffi:defctype cffi:defcstruct))
-             ;; avoiding redefinition warnings (maybe build a dedicated list for this):
-             (not (tree-equal form '(cffi:defcstruct (hu.dwim.sdl/core::audio-cvt :size 0))
-                              :test #'equal)))
+  (when (and (member (first form) '(cffi:defctype cffi:defcstruct)))
     (multiple-value-bind (struct-name name slot-names)
         (case (first form)
           (defcstruct (struct-info-from-defcstruct form))
           (defctype (struct-info-from-defctype form)))
       (when (and struct-name
+                 ;; Empty structs (no members) in C are undefined (unless an extension):
+                 ;; https://stackoverflow.com/questions/53952097/empty-structs-in-c
+                 ;; (but usually it's just the way declarations are translated).
+                 ;; Skipping generation for these structs also avoids collision
+                 ;; with function-wrapping macros like `with-window'.
+                 slot-names
                  ;; don't redefine struct of the same name:
                  (not (and (eql (first form) 'cffi:defctype) (eql name struct-name)))) 
         (let* ((make-macro-name (symbolicate 'make- name))
@@ -216,37 +220,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
            `(def-multi-with-macro ,with*macro-name* ,with*macro-name ,slot-names)
            `(export ',all-macros)))))))
 
-(defun resolve-type-spec (type-spec package)
-  (flet ((ensure (x) (or (find-symbol (symbol-name x) package)
-                         (error "Symbol ~a was not found in ~a." x package))))
-    (cond ((keywordp type-spec) type-spec)
-          ((symbolp type-spec) (ensure type-spec))
-          ((listp type-spec) (mapcar (rcurry #'resolve-type-spec package) type-spec))
-          (t (error "Don't know how to place ~a in a package." type-spec)))))
-
-;; we have shadowed cl version of with-slots to allow sdl:with-slots
-(defmacro with-sdl-slots ((vars ptr type) &body body)
-  (let ((type* (if (listp type) (second type) type)))
-    (flet ((type-in-p (package) (when (find-symbol (symbol-name type*)
-                                                   (find-package package))
-                                  (find-package package))))
-      (let* ((package (or (type-in-p :hu.dwim.sdl/core)
-                          (type-in-p :hu.dwim.sdl/ttf)
-                          (type-in-p :hu.dwim.sdl/gfx)
-                          (type-in-p :hu.dwim.sdl/image)
-                          (error "Type ~a was not found in any sdl package" type)))
-             (native-vars (mapcar (lambda (var)
-                                    (list var (ensure-symbol var package)))
-                                  vars)))
-        `(cffi:with-foreign-slots (,(mapcar #'second native-vars)
-                                   ,ptr ,(resolve-type-spec type package))
-           (symbol-macrolet (,@native-vars)
-             ,@body))))))
-
-#+nil
-(hu.dwim.sdl/core:with-point (a :x 0 :y 5)
-  (hu.dwim.sdl::with-sdl-slots ((x y) a (:struct rect))
-    (values x y)))
 #+nil
 (hu.dwim.sdl/core:with-rect (clip-rect :x 0 :y 0 :w 10 :h 10)
   (hu.dwim.sdl/core:with-point* ((a :x 2 :y 2)
@@ -263,6 +236,74 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 #+nil
 (hu.dwim.sdl/core:with-rect (data :x 0 :y 0 :w 10 :h 10) data)
 
+;; * with-sdl-slots
+
+(defun resolve-type-spec (type-spec package)
+  (flet ((ensure (x) (or (find-symbol (symbol-name x) package)
+                         (error "Symbol ~a was not found in ~a." x package))))
+    (cond ((keywordp type-spec) type-spec)
+          ((symbolp type-spec) (ensure type-spec))
+          ((listp type-spec) (mapcar (rcurry #'resolve-type-spec package) type-spec))
+          (t (error "Don't know how to place ~a in a package." type-spec)))))
+
+(defmacro with-sdl-slots ((slot-entries ptr type) &body body)
+  (let ((type* (if (listp type) (second type) type)))
+    (flet ((type-in-p (package) (when (find-symbol (symbol-name type*)
+                                                   (find-package package))
+                                  (find-package package))))
+      (let ((package (or (type-in-p :hu.dwim.sdl/core)
+                         (type-in-p :hu.dwim.sdl/ttf)
+                         (type-in-p :hu.dwim.sdl/gfx)
+                         (type-in-p :hu.dwim.sdl/image)
+                         (error "Type ~a was not found in any sdl package." type))))
+        (with-gensyms (ptr-sym)
+          `(let ((,ptr-sym ,ptr))
+             (symbol-macrolet
+                 ,(mapcar (lambda (spec)
+                            (destructuring-bind (var accessor) spec
+                              `(,var (,(if (and (listp accessor)
+                                                (eql :pointer (first accessor)))
+                                           'foreign-slot-pointer
+                                           'foreign-slot-value)
+                                      ,ptr-sym
+                                      ',(resolve-type-spec type package)
+                                      ',(resolve-type-spec (if (listp accessor)
+                                                               (second accessor)
+                                                               accessor)
+                                                           package)))))
+                          (mapcar (lambda (entry) ; canonicalize
+                                    (if (listp entry)
+                                        (list* (first entry) (or (rest entry) `(,(first entry))))
+                                        (list entry entry)))
+                                  slot-entries))
+               ,@body)))))))
+
+#+nil
+(hu.dwim.sdl/core:with-point (p :x 0 :y 1)
+  (with-sdl-slots ((x y) p point)
+    (values x y)))
+;; => 0, 1
+
+#+nil
+(hu.dwim.sdl/core:with-point (p :x 0 :y 1)
+  (with-sdl-slots (((x0 x) (y0 (:pointer y))) p point)
+    (values x0 y0)))
+;; => 0, #.(SB-SYS:INT-SAP #X7F9AEE437FF4)
+
+(defmacro with-sdl-slots* (((slot-entries ptr type) &rest other-bindings) &body body)
+  `(with-sdl-slots (,slot-entries ,ptr ,type)
+     ,@(if other-bindings
+           `((with-sdl-slots* (,@other-bindings) ,@body))
+           body)))
+
+#+nil
+(hu.dwim.sdl/core:with-point* ((point-a :x 0 :y 1)
+                               (point-b :x 2 :y 3))
+  (with-sdl-slots* ((((x0 x) (y0 y)) point-a point)
+                    (((x1 x) (y1 y)) point-b point))
+    (values x0 y0 x1 y1)))
+;; => 0, 1, 2, 3
+
 ;; * Passed return values macro generation
 
 (defun maybe-generate-passed-return-value-macro (form)
@@ -278,17 +319,42 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
       (when desc
         (list
          `(fmakunbound ',name*)
-         `(hu.dwim.sdl::defun-with-passed-return-values ,name*
+         `(defun-with-passed-return-values ,name*
             ,name         
             ,(when desc-suppress-return t)
             ,(cdddr form)
             ,(rest desc))
          `(export ',name*))))))
 
+;; * maybe generate with-<function-name> macro
+
+(defun maybe-generate-with-function-macro (form)
+  (when (eql 'cffi:defcfun (first form))
+    (when-let* ((c-name (first (second form)))
+                (name (second (second form)))
+                (instruction (rest (find c-name *with-function-list*
+                                         :key #'first
+                                         :test #'equal)))
+                (name* (symbolicate 'with- (second instruction)))
+                (cleanup (first instruction)))
+      (let ((arg-names (mapcar #'first (cdddr form))))
+        (list
+         `(eval-when (:compile-toplevel :load-toplevel :execute)
+            (fmakunbound ',name*))
+         `(defmacro ,name* (var ,arg-names &body body)
+            ;; not that even if arg-names contains `var', that shouldn't be a
+            ;; problem, since it's in a different namespace
+            `(let ((,var (,',name ,,@arg-names))) ;
+               (unwind-protect
+                    (progn ,@body)
+                 (,',(symbolicate (ffi-name-transformer cleanup :function)) ,var))))
+         `(export ',name*))))))
+
 ;; * Callback setup
 
 (defun form-callback (form &key &allow-other-keys)
   (remove nil (append (maybe-generate-passed-return-value-macro form)
+                      (maybe-generate-with-function-macro form)
                       (maybe-generate-maker-and-with-macros form))))
 
 (defun prologue-callback (&key &allow-other-keys)
