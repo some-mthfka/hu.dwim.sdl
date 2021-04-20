@@ -92,8 +92,7 @@ There aren't any GC additions so far, though.
 
 Everything is exported, except:
 
-- TTF
- - `get-font-kerning-size`, which is deprected (use `get-font-kerning-size-glyphs` instead).
+- [TTF] `get-font-kerning-size`, which is deprected (use `get-font-kerning-size-glyphs` instead).
  
 ### Automatic Conversion and Error checking of Return Values
 
@@ -200,7 +199,7 @@ becomes simply
 ```
 
 For the list of functions for which this is done (and for a place to add more),
-see [other-lists.lisp](source/passed-return-value-lists.lisp).
+see [other-lists.lisp](source/other-lists.lisp).
 
 #### `make-<struct-name>` and `make*<struct-name>`: construction macros
 
@@ -260,10 +259,10 @@ function, except in these cases:
 - `SDL_GL_CreateContext` --> `with-gl-context`
 - `SDL_Metal_CreateView` --> `with-metal-view`.
 
-See [other-lists.lisp](source/passed-return-value-lists.lisp) for the list of
+See [other-lists.lisp](source/other-lists.lisp) for the list of
 these macros.
  
-#### `with-sdl-slots`
+#### `with-sdl-slots` and `with-sdl-slots*`
 
 This macro lets you easily access slots of a struct. Here's an example:
 
@@ -351,14 +350,14 @@ The following example opens a window and shows a rectangle for two seconds:
 
 ### Status
 
-**WIP** Things aren't very stable at the moment, API is not frozen.
+**API is not frozen.**
 
 I think everything is pretty solid, but there may be errors in judgement about
 the functions in the conversion lists: there could be some stray functions that
-may not really need error checking or conversion, or, on the contrary, those
-that may. If there's a clear cut case of such an error that you find, don't rely
-on it, it will be likely considered a bug and will be fixed. So, please, report
-dubious cases.
+may not really need error checking or a bool conversion, or, on the contrary,
+those that may. If there's a clear cut case of such an error that you find,
+don't rely on it, it will be likely considered a bug and will be fixed. So,
+please, report dubious cases.
 
 All the breaking changes will be listed in this file.
 
