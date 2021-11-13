@@ -11,7 +11,12 @@ something that would require deallocation by the user, like `enclose-points',
 which fills an array of points as its result, it's better that the user employs
 a suitable with macro and does the passing himself.")
 
-(defparameter *auto-passed-return-value+pass-return/all* nil)
+(defparameter *auto-passed-return-value+pass-return/all*
+  '(("SDL_GetMouseState" - -)
+    ("SDL_GetGlobalMouseState" - -)
+    ("SDL_GetRelativeMouseState" - -))
+  "Same purpose as `*auto-passed-return-value+suppress-return/all*', but the
+original return value is returned as well.")
 
 ;; Remove Create. In case of a name not starting with Create, add it to README.
 (defparameter *with-function-list* 

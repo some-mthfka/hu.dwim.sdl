@@ -93,11 +93,6 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
 ;; cffi, so I resort to keeping track of this manually.
 (defparameter *known-struct-defs* nil) ; No real need to setf to nil on every generation.
 
-(defun sym (name exclude)
-  (if (member name exclude) (gensym (symbol-name name)) name))
-
-(ensure-symbol 'a (find-package :hu.dwim.sdl/core))
-
 ;; name and slot-names are for error checking
 (defun scan-keys (supplied-keys name slot-names optional-p)
   (loop for (key value) on supplied-keys by #'cddr
@@ -115,51 +110,49 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
                                                             "WITH*")))))
                   (return (values supplied-slots key-value-pairs)))))
 
+;; NOTE that if `_' or `body' or `var' appears in ,@slot-names, is shouldn't be
+;; a problem.  Just check the macroexpansion in the generated file and you will
+;; see that _ belongs to this package, while everything in slot-names is in the
+;; actual sdl package, so there may be no conflict as those are different
+;; packages.  I assumed otherwise at first, some uneccessary code was written.
+
 (defmacro def-make-struct-macro (name type-name slot-names optional-p)
   (with-gensyms (ptr supplied-slots pairs)
-    (let ((rest-sym (sym '_ slot-names)))
-      `(defmacro ,name (&rest ,rest-sym &key ,@slot-names)
-         (declare (ignorable ,@slot-names)) ; we access them through ,rest-sym
-         (multiple-value-bind (,supplied-slots ,pairs)
-             (scan-keys ,rest-sym ',name ',slot-names ,optional-p)
-           `(let ((,',ptr (cffi:foreign-alloc ',',type-name)))
-              ,(when ,supplied-slots
-                 `(with-foreign-slots (,,supplied-slots ,',ptr ,',type-name)
-                    (setf ,@(loop for (sn sv) in ,pairs
-                                  appending `(,sn ,sv)))))
-              ,',ptr))))))
+    `(defmacro ,name (&rest _ &key ,@slot-names)
+       (declare (ignorable ,@slot-names)) ; we access them through _
+       (multiple-value-bind (,supplied-slots ,pairs)
+           (scan-keys _ ',name ',slot-names ,optional-p)
+         `(let ((,',ptr (cffi:foreign-alloc ',',type-name)))
+            ,(when ,supplied-slots
+               `(with-foreign-slots (,,supplied-slots ,',ptr ,',type-name)
+                  (setf ,@(loop for (sn sv) in ,pairs
+                                appending `(,sn ,sv)))))
+            ,',ptr)))))
 
 (defmacro def-with-struct-macro (name type-name slot-names optional-p)
   (with-gensyms (supplied-slots pairs)
     ;; we are making no assumptions about the slot names here
-    (let ((var-sym (sym 'var slot-names))
-          (rest-sym (sym '_ slot-names))
-          (body-sym (sym 'body slot-names)))
-      `(defmacro ,name ((,var-sym &rest ,rest-sym &key ,@slot-names) &body ,body-sym)
-         (declare (ignorable ,@slot-names)) ; we access them through ,rest-sym
-         (multiple-value-bind (,supplied-slots ,pairs)
-             (scan-keys ,rest-sym ',name ',slot-names ,optional-p)
-           `(cffi:with-foreign-object (,,var-sym ',',type-name)
-              ,(when ,supplied-slots
-                 `(with-foreign-slots (,,supplied-slots ,,var-sym ,',type-name)
-                    (setf ,@(loop for (sn sv) in ,pairs
-                                  appending `(,sn ,sv)))))
-              nil
-              ,@,body-sym))))))
+    `(defmacro ,name ((var &rest _ &key ,@slot-names) &body body)
+       (declare (ignorable ,@slot-names)) ; we access them through _
+       (multiple-value-bind (,supplied-slots ,pairs)
+           (scan-keys _ ',name ',slot-names ,optional-p)
+         `(cffi:with-foreign-object (,var ',',type-name)
+            ,(when ,supplied-slots
+               `(with-foreign-slots (,,supplied-slots ,var ,',type-name)
+                  (setf ,@(loop for (sn sv) in ,pairs
+                                appending `(,sn ,sv)))))
+            nil
+            ,@body)))))
 
 (defmacro def-multi-with-macro (macro-name* macro-name slot-names)
-  (let ((var-sym (sym 'var slot-names))
-        (rest-sym (sym '_ slot-names))
-        (other-bindings-sym (sym 'rest-of-bindings slot-names))
-        (body-sym (sym 'body slot-names)))
-    `(defmacro ,macro-name* (((,var-sym &rest ,rest-sym &key ,@slot-names)
-                              &rest ,other-bindings-sym)
-                             &body ,body-sym)
-       (declare (ignorable ,@slot-names))
-       `(,',macro-name (,,var-sym ,@,rest-sym)
-                       ,@(if rest-of-bindings
-                             `((,',macro-name* (,@rest-of-bindings) ,@,body-sym))
-                             ,body-sym)))))
+  `(defmacro ,macro-name* (((var &rest _ &key ,@slot-names)
+                            &rest rest-of-bindings)
+                           &body body)
+     (declare (ignorable ,@slot-names))
+     `(,',macro-name (,var ,@_)
+                     ,@(if rest-of-bindings
+                           `((,',macro-name* (,@rest-of-bindings) ,@body))
+                           body))))
 
 (defun struct-info-from-defcstruct (form)
   (values
@@ -247,6 +240,9 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
           (t (error "Don't know how to place ~a in a package." type-spec)))))
 
 (defmacro with-sdl-slots ((slot-entries ptr type) &body body)
+  "Access slots of an SDL struct of TYPE at PTR.  SLOT-ENTRIES is a list, where
+every element is either the name of the field or a pair (<your sym> <name of the
+field>)."
   (let ((type* (if (listp type) (second type) type)))
     (flet ((type-in-p (package) (when (find-symbol (symbol-name type*)
                                                    (find-package package))

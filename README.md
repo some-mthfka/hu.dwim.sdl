@@ -5,7 +5,7 @@
 This is a fork of [hu.dwim.sdl](https://github.com/hu-dwim/hu.dwim.sdl). The
 details are in the subsections below, but here's the summary:
 
-- `hu.dwim.sdl.ffi` was removed in favour of seperate packages, one for each sdl module.
+- `hu.dwim.sdl.ffi` was removed in favor of separate packages, one for each sdl module.
 - Everything is exported in the generated files.
 - Generated names are lispy.
 - Automatic boolean conversion and error checking of return values (where applicable).
@@ -92,7 +92,8 @@ There aren't any GC additions so far, though.
 
 Everything is exported, except:
 
-- [TTF] `get-font-kerning-size`, which is deprected (use `get-font-kerning-size-glyphs` instead).
+- [TTF] `get-font-kerning-size`, which is deprecated (use
+  `get-font-kerning-size-glyphs` instead).
  
 ### Automatic Conversion and Error checking of Return Values
 
@@ -113,7 +114,7 @@ The following expansions of return values take place:
 - negative number signals an error
 - string starts with something indicating an error
 - bool-like value like `SDL_bool` and where `0` indicates false are converted to
-  `nil` on `0`/`SDL_FALSE` and `t` otherwise.
+  `nil` on `0` (equals `SDL_FALSE`) and `t` otherwise.
 - same as above, but where false signals an error
  
 These are fairly easy to add should there be more cases.
@@ -121,7 +122,7 @@ These are fairly easy to add should there be more cases.
 The values are expanded based on the actual return type of the function - the
 expansion methods are defined at the time of return type name conversion and the
 code with custom type details is inserted into the generated file, right before
-the function definiton in question.
+the function definition in question.
 
 Each function has it's own error condition: `<function-name>-error` and it is
 exported.  All error conditions inherit from `hu.dwim.sdl:sdl-error`. The actual
@@ -160,7 +161,7 @@ doesn't work, always make sure to go and check the generated definition along
 with the relevant SDL documentation.**
 
 As a precaution, if you generate new specs with new functions in the sense that
-they aren't in the conversion lists, you will get a warned about them, and if
+they aren't in the conversion lists, you will get warned about them, and if
 those functions have unknown abbreviations, you will be told about that as well.
 
 #### Undecided / Unfinished / Unclear
