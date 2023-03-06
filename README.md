@@ -438,5 +438,4 @@ their regeneration is automatic and painless.)
 
 ## Status
 
-It contains a complete FFI for `sdl.h`, `sdl-gfx.h`, `sdl-ttf.h`, and `sdl-image.h`.
-Not much has been added yet to lispify the SDL API, but the CFFI binding part is complete.
+Has FFI for `sdl.h`, `sdl-gfx.h`, `sdl-ttf.h`, and `sdl-image.h`.

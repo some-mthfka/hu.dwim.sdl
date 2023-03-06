@@ -166,6 +166,11 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
    ;; slot-names
    (mapcar #'first (cddr form))))
 
+(defun struct-info-from-defcunion (form)
+  ;; Like a struct, but omit the slot names
+  (multiple-value-bind (struct-name name) (struct-info-from-defcstruct form)
+    (values struct-name name)))
+
 (defun struct-info-from-defctype (form)
   (let ((typespec (third form)))
     (when (listp typespec)
@@ -179,21 +184,23 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
        (mapcar #'first (cddr (getf *known-struct-defs* (second typespec))))))))
 
 (defun maybe-generate-maker-and-with-macros (form)
-  (when (and (member (first form) '(cffi:defctype cffi:defcstruct)))
+  (when (member (first form) '(cffi:defctype cffi:defcstruct cffi:defcunion))
     (multiple-value-bind (struct-name name slot-names)
         (case (first form)
           (defcstruct (struct-info-from-defcstruct form))
-          (defctype (struct-info-from-defctype form)))
+          (defctype (struct-info-from-defctype form))
+          (defcunion (struct-info-from-defcunion form)))
       (when (and struct-name
                  ;; Empty structs (no members) in C are undefined (unless an extension):
                  ;; https://stackoverflow.com/questions/53952097/empty-structs-in-c
                  ;; (but usually it's just the way declarations are translated).
                  ;; Skipping generation for these structs also avoids collision
                  ;; with function-wrapping macros like `with-window'.
-                 slot-names
+                 (or (eql (first form) 'cffi:defcunion) slot-names)
                  ;; don't redefine struct of the same name:
                  (not (and (eql (first form) 'cffi:defctype) (eql name struct-name)))) 
-        (let* ((make-macro-name (symbolicate 'make- name))
+        (let* ((kind (if (eql (first form) 'cffi:defcunion) :union :struct))
+               (make-macro-name (symbolicate 'make- name))
                (make*macro-name (symbolicate 'make* name))
                (with-macro-name (symbolicate 'with- name))
                (with-macro-name* (symbolicate with-macro-name '*))
@@ -205,11 +212,11 @@ because they contain unknown abbreviations.  File an issue or add exceptions to
           (list
            `(eval-when (:compile-toplevel :load-toplevel :execute)
               (mapcar #'fmakunbound ',all-macros)) ; avoid redefinition warnings
-           `(def-make-struct-macro ,make-macro-name ,(list :struct struct-name) ,slot-names nil)
-           `(def-make-struct-macro ,make*macro-name ,(list :struct struct-name) ,slot-names t)
-           `(def-with-struct-macro ,with-macro-name ,(list :struct struct-name) ,slot-names nil)
+           `(def-make-struct-macro ,make-macro-name ,(list kind struct-name) ,slot-names nil)
+           `(def-make-struct-macro ,make*macro-name ,(list kind struct-name) ,slot-names t)
+           `(def-with-struct-macro ,with-macro-name ,(list kind struct-name) ,slot-names nil)
            `(def-multi-with-macro ,with-macro-name* ,with-macro-name ,slot-names)
-           `(def-with-struct-macro ,with*macro-name ,(list :struct struct-name) ,slot-names t)
+           `(def-with-struct-macro ,with*macro-name ,(list kind struct-name) ,slot-names t)
            `(def-multi-with-macro ,with*macro-name* ,with*macro-name ,slot-names)
            `(export ',all-macros)))))))
 
