@@ -161,23 +161,3 @@
                                                     "^SDL_LINE$"
                                                     ;;"^PRI[xX]"
                                                     ))))))
-
-(defsystem :hu.dwim.sdl/fancy
-  :description "Fancier API extensions for hu.dwim.sdl in return for more dependencies."
-  :author "Attila Lendvai"
-  :license "BSD or Bugroff"
-  :version "0.1"
-
-  :defsystem-depends-on (:hu.dwim.asdf)
-  :class "hu.dwim.asdf:hu.dwim.system"
-  :depends-on (:hu.dwim.def+hu.dwim.common
-               :hu.dwim.defclass-star+hu.dwim.def
-               :hu.dwim.sdl
-               :hu.dwim.sdl/gfx
-               :hu.dwim.sdl/image
-               :hu.dwim.sdl/ttf
-               :hu.dwim.syntax-sugar)
-  :components ((:module "source"
-                :serial t
-                :components ((:file "package-fancy")
-                             (:file "fancy")))))

@@ -43,12 +43,19 @@ don't think this to be a big deal, though.
 
 ### Packages
 
-- `hu.dwim.sdl/core` (bindings for SDL2),
-- `hu.dwim.sdl/gfx` (bindings for SDL2_gfx),
-- `hu.dwim.sdl/ttf` (bindings for SDL2_ttf),
-- `hu.dwim.sdl/image` (bindings for SDL_image),
-- `hu.dwim.sdl` (here reside the utilities for generation in addition to some
+- `hu.dwim.sdl/core` -- bindings for SDL2,
+- `hu.dwim.sdl/gfx` -- bindings for SDL2_gfx,
+- `hu.dwim.sdl/ttf` -- bindings for SDL2_ttf,
+- `hu.dwim.sdl/image` -- bindings for SDL_image,
+- `hu.dwim.sdl` -- here reside the utilities for generation in addition to some
   high-level API that doesn't belong to any particular SDL package).
+
+### Systems
+
+- `hu.dwim.sdl` -- contains `hu.dwim.sdl` and `hu.dwim.sdl/core` packages.
+- `hu.dwim.sdl/gfx`
+- `hu.dwim.sdl/ttf`
+- `hu.dwim.sdl/image`
  
 ### Naming
 
