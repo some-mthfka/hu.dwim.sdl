@@ -243,6 +243,8 @@
   "SDL_JoystickAttachVirtual"     ; -1 if an error occurred.
   "SDL_JoystickGetDeviceInstanceID" ; If the index is out of range, this function will return -1.
   "SDL_JoystickGetDevicePlayerIndex" ; "-1 if it's not available", but probably like other joystick functions taking device_id
+  "SDL_RenderGeometry"
+  "SDL_RenderGeometryRaw"
   )
 
 ;; ** core / null is error
@@ -995,6 +997,24 @@
   "IMG_Init" 
   "IMG_Linked_Version")
 
+;; * SDL WIP
+
+(defl *skip/wip*
+  "point"
+  "lineRaw"
+  "linesRaw"
+  "rectRaw"
+  "rectsRaw"
+  "filledRectRaw"
+  "filledRectsRaw"
+  "hLine"
+  "vLine"
+  "line"
+  "polyline"
+  "aaRect"
+  "regularPolygon"
+  "convexPolygon")
+
 ;; * all
 
 ;; ** all / negative checks
@@ -1073,7 +1093,7 @@
 ;; ** all / skip
 
 (defparameter *skip/all*
-  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image*))
+  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image* *skip/wip*))
 
 ;; * checks
 
