@@ -1140,24 +1140,6 @@
   "IMG_Init" 
   "IMG_Linked_Version")
 
-;; * SDL WIP
-
-(defl *skip/wip*
-  "point"
-  "lineRaw"
-  "linesRaw"
-  "rectRaw"
-  "rectsRaw"
-  "filledRectRaw"
-  "filledRectsRaw"
-  "hLine"
-  "vLine"
-  "line"
-  "polyline"
-  "aaRect"
-  "regularPolygon"
-  "convexPolygon")
-
 ;; * all
 
 ;; ** all / negative checks
@@ -1236,7 +1218,7 @@
 ;; ** all / skip
 
 (defparameter *skip/all*
-  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image* *skip/wip*))
+  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image*))
 
 ;; * checks
 
@@ -1273,6 +1255,3 @@
 ;; ;; (defun-with-passed-return-values hu.dwim.sdl/ttf:ttf-size- * * :int :int)
 
 ;; (ttf-size-text* font "Hello World!")
-
-
-

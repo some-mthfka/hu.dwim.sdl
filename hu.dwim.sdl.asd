@@ -184,6 +184,28 @@
                                                      (t (:default "libSDL2_wip")))
                               ;; :include-sources ("SDL2/SDL_image\\.h$")
                               :exclude-sources :all
-                              ;; :include-definitions ("regularPolygon")
+                              :include-definitions ("point"
+                                                    "lineRaw"
+                                                    "linesRaw"
+                                                    "rectRaw"
+                                                    "rectsRaw"
+                                                    "filledRectRaw"
+                                                    "filledRectsRaw"
+                                                    "hLine"
+                                                    "vLine"
+                                                    "line"
+                                                    "polyline"
+                                                    "aaRect"
+                                                    "regularPolygon"
+                                                    "convexPolygon"
+                                                    "arc"
+                                                    "bezier"
+                                                    "bSpline"
+                                                    "NUBS"
+                                                    "hermite"
+                                                    "catmullRom"
+                                                    "circle"
+                                                    "ellipse"
+                                                    "polyBezier")
                               ;; :exclude-definitions ()
                               )))))
