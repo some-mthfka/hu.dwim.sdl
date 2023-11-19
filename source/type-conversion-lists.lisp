@@ -1140,6 +1140,24 @@
   "IMG_Init" 
   "IMG_Linked_Version")
 
+;; * SDL WIP
+
+(defl *skip/wip*
+  "point"
+  "lineRaw"
+  "linesRaw"
+  "rectRaw"
+  "rectsRaw"
+  "filledRectRaw"
+  "filledRectsRaw"
+  "hLine"
+  "vLine"
+  "line"
+  "polyline"
+  "aaRect"
+  "regularPolygon"
+  "convexPolygon")
+
 ;; * all
 
 ;; ** all / negative checks
@@ -1218,7 +1236,7 @@
 ;; ** all / skip
 
 (defparameter *skip/all*
-  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image*))
+  (append *skip/core* *skip/ttf* *skip/gfx* *skip/image* *skip/wip*))
 
 ;; * checks
 

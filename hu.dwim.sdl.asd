@@ -161,3 +161,29 @@
                                                     "^SDL_LINE$"
                                                     ;;"^PRI[xX]"
                                                     ))))))
+
+(defsystem :hu.dwim.sdl/wip
+  :defsystem-depends-on (:cffi/c2ffi)
+  :depends-on (:alexandria
+               :cl-ppcre
+               :cffi
+               :cffi/c2ffi
+               :cffi-libffi
+               :hu.dwim.sdl)
+  :components ((:module "c2ffi-spec"
+                :components ((:cffi/c2ffi-file "SDL2_wip.h"
+                              :package #:hu.dwim.sdl/wip
+                              :callback-factory "hu.dwim.sdl::callback-factory"
+                              :ffi-name-transformer "hu.dwim.sdl::ffi-name-transformer"
+                              :ffi-type-transformer "hu.dwim.sdl::ffi-type-transformer"
+                              :ffi-name-export-predicate "hu.dwim.sdl::ffi-name-export-predicate"
+                              :foreign-library-name "hu.dwim.sdl/core::libsdl2/wip"
+                              :foreign-library-spec (;; (:darwin (:or (:framework "SDL2_image") (:default "libSDL2_image")))
+                                                     ;; (:unix (:or "libSDL2_image-2.0.so.0" "libSDL2_image"))
+                                                     ;; (:windows "SDL2_image.dll")
+                                                     (t (:default "libSDL2_wip")))
+                              ;; :include-sources ("SDL2/SDL_image\\.h$")
+                              :exclude-sources :all
+                              ;; :include-definitions ("regularPolygon")
+                              ;; :exclude-definitions ()
+                              )))))
