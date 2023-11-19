@@ -55,7 +55,8 @@ manually."
                               (ffi-name-transformer "SDL_Init" :function)
                               (ffi-name-transformer "SDL_WasInit" :function)
                               (ffi-name-transformer "SDL_LoadBMP_RW" :function)
-                              (ffi-name-transformer "SDL_PATCHLEVEL" :constant))))
+                              (ffi-name-transformer "SDL_PATCHLEVEL" :constant)
+                              (ffi-name-transformer "SDL_MINOR_VERSION" :constant))))
          (do-symbols (symbol (find-package :hu.dwim.sdl/core))
            ;; to avoid function-pointer error, or if anything else like that
            ;; gets introduced before the prologue:

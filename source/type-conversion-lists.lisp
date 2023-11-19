@@ -243,6 +243,36 @@
   "SDL_JoystickAttachVirtual"     ; -1 if an error occurred.
   "SDL_JoystickGetDeviceInstanceID" ; If the index is out of range, this function will return -1.
   "SDL_JoystickGetDevicePlayerIndex" ; "-1 if it's not available", but probably like other joystick functions taking device_id
+  "SDL_RenderGeometry"
+  "SDL_RenderGeometryRaw"
+  "SDL_SetTextureUserData"
+  "SDL_SetPrimarySelectionText" ; Returns 0 on success or a negative error code on failure;
+  "SDL_GameControllerGetSensorDataWithTimestamp" ; Return 0 or -1 if an error occurred.
+  "SDL_SensorGetDataWithTimestamp" ; Returns 0 or -1 if an error occurred.
+  "SDL_JoystickAttachVirtualEx" ; Returns the joystick's device index, or -1 if an error occurred.
+  "SDL_FlashWindow" ; Returns 0 on success or a negative error code on failure;
+  "SDL_hid_set_nonblocking" ; Returns 0 on success and -1 on error.
+  "SDL_hid_exit" ; Returns 0 on success and -1 on error.
+  "SDL_hid_init" ; Returns 0 on success and -1 on error.
+  "SDL_UpdateNVTexture" ; Return 0 on success, or -1 if the texture is not valid.
+  "SDL_RenderSetVSync" ; "Returns a 0 int on success, or non-zero on failure", manual check: -1 on error
+  "SDL_hid_get_indexed_string" ; Returns 0 on success and -1 on error.
+  "SDL_hid_get_manufacturer_string" ; Returns 0 on success and -1 on error.
+  "SDL_hid_get_product_string" ; Returns 0 on success and -1 on error.
+  "SDL_hid_get_serial_number_string" ; Returns 0 on success and -1 on error.
+  "SDL_hid_send_feature_report" ; Returns the actual number of bytes written and -1 on error.
+  "SDL_hid_read" ; Returns the actual number of bytes read and -1 on error.
+  "SDL_hid_read_timeout" ; Returns the actual number of bytes read and -1 on error.
+  "SDL_hid_write" ; Returns the actual number of bytes written and -1 on error.
+  "SDL_hid_get_feature_report" ; number of bytes, -1 on error
+  "SDL_GetDefaultAudioInfo" ; Returns 0 on success, nonzero on error, checked with sources to be SDL_error
+  "SDL_GetAudioDeviceSpec" ; Returns 0 on success, nonzero on error
+  "SDL_DestroyWindowSurface" ; Returns 0 on success or a negative error code on failure;
+  "SDL_GetRectDisplayIndex" ; negative error code on failure
+  "SDL_GetPointDisplayIndex" ; negative error code on failure
+  "SDL_PremultiplyAlpha" ; Returns 0 on success or a negative error code on failure
+  "SDL_LinuxSetThreadPriorityAndPolicy"
+  "SDL_SetWindowMouseRect" ; negative error code on failure;
   )
 
 ;; ** core / null is error
@@ -310,6 +340,7 @@
   "SDL_CreateColorCursor"
   "SDL_ConvertSurfaceFormat"
   "SDL_ConvertSurface"
+  "SDL_DuplicateSurface"
   "SDL_AndroidGetInternalStoragePath"
   "SDL_AndroidGetExternalStoragePath"
   "SDL_AllocRW"
@@ -355,6 +386,18 @@
   "SDL_GameControllerFromPlayerIndex" ; guessing it's like "SDL_JoystickFromPlayerIndex"
   "SDL_GameControllerMappingForIndex" ; NULL if the index is out of range.
   "SDL_AndroidGetJNIEnv" ; void *, "0 on error"
+  "SDL_GetTextureUserData" ; void *, "NULL if the texture is not valid"
+  "SDL_GetTouchName" ; NULL if the index is invalid
+  "SDL_hid_enumerate" ; NULL in the case of failure
+  "SDL_hid_open" ; NULL on failure.
+  "SDL_hid_open_path" ; NULL on failure
+  "SDL_RenderGetWindow" ; NULL on failure
+  "SDL_GameControllerPath" ; NULL if there is no path or the identifier passed is invalid.
+  "SDL_GameControllerPathForIndex" ; NULL if there is no path or the index is invalid.
+  "SDL_JoystickPath" ;  If no path can be found, this function returns NULL; call SDL_GetError() for more information.
+  "SDL_JoystickPathForIndex" ;  If no path can be found, this function returns NULL; call SDL_GetError() for more information.
+  "SDL_GetWindowMouseRect" ; Returns a pointer to the mouse confinement rectangle of a window, or NULL if there isn't one.
+  "SDL_GetWindowICCProfile" ; NULL on failure; call SDL_GetError()
   )
 
 ;; ** core / void
@@ -402,7 +445,18 @@
   "SDL_DestroyMutex" "SDL_ClearError" "SDL_MemoryBarrierAcquireFunction"
   "SDL_MemoryBarrierReleaseFunction" "SDL_AtomicUnlock" "SDL_AtomicLock"
   "SDL_ResetAssertionReport" "SDL_SetAssertionHandler" "SDL_SetMainReady"
-  "SDL_qsort" "SDL_GetMemoryFunctions" "SDL_free")
+  "SDL_qsort" "SDL_GetMemoryFunctions" "SDL_free"
+  "SDL_GetJoystickGUIDInfo"
+  "SDL_GUIDToString" "SDL_ClearComposition" "SDL_ResetKeyboard"
+  "SDL_GetOriginalMemoryFunctions" "SDL_SetWindowKeyboardGrab"
+  "SDL_SetWindowMouseGrab" "SDL_ResetHints" "SDL_hid_ble_scan" "SDL_hid_close"
+  "SDL_hid_free_enumeration" "SDL_RenderLogicalToWindow"
+  "SDL_RenderWindowToLogical"
+  "SDL_SetWindowAlwaysOnTop"
+  "SDL_UnionFRect"
+  "SDL_GetWindowSizeInPixels"
+  "SDL_TLSCleanup"
+  )
 
 ;; ** core / booleans (no error checking)
 
@@ -473,6 +527,22 @@
   "SDL_GameControllerIsSensorEnabled"
   "SDL_JoystickGetAxisInitialState"
   "SDL_JoystickIsVirtual"
+  "SDL_JoystickHasRumble"
+  "SDL_IsTextInputShown"
+  "SDL_GetWindowMouseGrab"
+  "SDL_GameControllerHasRumble"
+  "SDL_JoystickHasRumbleTriggers"
+  "SDL_ResetHint"
+  "SDL_GameControllerHasRumbleTriggers"
+  "SDL_GetWindowKeyboardGrab"
+  "SDL_EncloseFPoints"
+  "SDL_IntersectFRectAndLine"
+  "SDL_HasWindowSurface"
+  "SDL_HasPrimarySelectionText"
+  "SDL_HasLSX"
+  "SDL_HasLASX"
+  "SDL_HasIntersectionF"
+  "SDL_IntersectFRect"
   )
 
 ;; ** core / boolean check errors (on SDL_FALSE)
@@ -499,6 +569,7 @@
   "SDL_PollEvent" ; int, Returns 1 if there is a pending event or 0 if there are none available.
   "SDL_MouseIsHaptic" ; int, Returns SDL_TRUE if the mouse is haptic or SDL_FALSE if it isn't.
   "SDL_HapticOpened" ; Returns 1 if it has been opened, 0 if it hasn't or on failure;
+  "SDL_GameControllerSendEffect" ; Returns 0, or -1 if this controller or driver doesn't support effect packets
   )
 
 ;; ** core / bool-like ints, negative on errors
@@ -651,12 +722,13 @@
   "SDL_JoystickGetAxis" ; Returns a 16-bit signed integer representing the current position of the axis or 0 on failure
   "SDL_GetNumAudioDevices" ; A return value of -1 does not necessarily mean an error condition.
   "SDL_SetMemoryFunctions"
-  "SDL_GetNumAllocations" ; int, takes no args
+  "SDL_GetNumAllocations"               ; int, takes no args
   "SDL_GetShapedWindowMode"
-  "SDL_GameControllerGetPlayerIndex" ; -1 if it's not available.
-  "SDL_JoystickGetPlayerIndex" ; -1 if it's not available.
-  "SDL_GameControllerRumbleTriggers" ; -1 if trigger rumble isn't supported
-  "SDL_GameControllerRumble" ; -1 if rumble isn't supported
+  "SDL_GameControllerGetPlayerIndex"    ; -1 if it's not available.
+  "SDL_JoystickGetPlayerIndex"          ; -1 if it's not available.
+  "SDL_GameControllerRumbleTriggers"    ; -1 if trigger rumble isn't supported
+  "SDL_GameControllerRumble"            ; -1 if rumble isn't supported
+  "SDL_JoystickSendEffect" ; Returns 0, or -1 if this joystick or driver doesn't support effect packets
   "SDL_JoystickRumbleTriggers"
   "SDL_JoystickRumble"
   "SDL_GameControllerSetLED"
@@ -674,15 +746,30 @@
   "SDL_GameControllerName" ; NULL if there is no name or the identifier passed is invalid.
   "SDL_GameControllerGetType"
   "SDL_GameControllerGetSerial"
-  "SDL_GameControllerTypeForIndex" ; no error info
+  "SDL_GameControllerTypeForIndex"      ; no error info
+  "SDL_GUIDFromString"                  ; Returns a ::SDL_GUID structure
+  "SDL_GameControllerGetAppleSFSymbolsNameForButton" ; const char*, NULL if the name can't be found
+  "SDL_GameControllerGetAppleSFSymbolsNameForAxis" ; const char*, NULL if the name can't be found
+  "SDL_hid_device_change_count" ; Returns a change counter [...] or 0 if device change detection isn't available.
+  "SDL_GetTicks64"
+  ;; "SDL_AudioStreamFlush"
+  "SDL_GetAudioDeviceStatus" ; Returns the SDL_AudioStatus of the specified audio device.
+  "SDL_SoftStretchLinear"
+  "SDL_GameControllerGetFirmwareVersion" ; Return the controller firmware version, or zero if unavailable.
+  "SDL_JoystickGetType"
+  "SDL_JoystickGetFirmwareVersion" ; If the firmware version isn't available this function returns 0.
+  "SDL_SIMDGetAlignment"
   ;; some enums (not all, and no error checking):
   "SDL_GetAudioStatus" ; wiki shows gibberish, sources: returns enum, no error checks
-  "SDL_GetDisplayOrientation" ; SDL_ORIENTATION_UNKNOWN if it isn't available.
+  "SDL_GetDisplayOrientation"   ; SDL_ORIENTATION_UNKNOWN if it isn't available.
   "SDL_GetYUVConversionModeForResolution" ; no details on wiki, source: no apparent fatal errors
   "SDL_GetYUVConversionMode" ; no details on wiki, source: no apparent fatal errors
   ;; no error checking needed, but I ain't that certain, or the wiki isn't
   "SDL_GetQueuedAudioSize" ; uint32 Returns 0 by default or if device not found, but the size can be 0 too, couldn't it?
+  "SDL_GameControllerGetSensorDataRate" ; Return the data rate, or 0.0f if the data rate is not available.
+  ;; "SDL_GameControllerGetTouchpadFinger" ; int, but wiki gives no info on return value
   ;; "SDL_IsDeviceDisconnected" ; wiki shows gibberish, can't find the source definition for this, see SDL_IsDevicePresent
+  ;; "SDL_GetPrimarySelectionText" ; Returns the primary selection text on success or an empty string on failure;
   ;; well, imma just ignore these, alright? also see https://wiki.libsdl.org/ToDo
   ;; some of these do their own arithmetic reporting
   "SDL_iconv_string" "SDL_iconv" "SDL_iconv_close" "SDL_iconv_open" "SDL_sqrt"
@@ -701,7 +788,12 @@
   "SDL_fabsf" "SDL_expf" "SDL_exp" "SDL_copysignf" "SDL_ceilf" "SDL_atan2f"
   "SDL_atanf" "SDL_asinf" "SDL_acosf" "SDL_utf8strlen" "SDL_strtokr"
   "SDL_wcsncasecmp" "SDL_wcscasecmp" "SDL_wcsncmp" "SDL_wcscmp" "SDL_wcsstr"
-  "SDL_wcsdup" "SDL_crc32" "SDL_islower" "SDL_isupper")
+  "SDL_wcsdup" "SDL_crc32" "SDL_islower" "SDL_isupper"
+  "SDL_lroundf" "SDL_lround" "SDL_roundf" "SDL_round" "SDL_asprintf"
+  "SDL_strcasestr" "SDL_isgraph" "SDL_isprint" "SDL_ispunct" "SDL_isxdigit"
+  "SDL_iscntrl" "SDL_isblank" "SDL_isalnum" "SDL_isalpha" "SDL_utf8strnlen"
+  "SDL_crc16" "SDL_bsearch"
+  )
 
 ;; * SDL TTF
 
@@ -718,7 +810,21 @@
   "TTF_SizeUTF8"
   "TTF_SizeText"
   "TTF_GlyphMetrics"
+  "TTF_GlyphMetrics32"
   "TTF_GetFontKerningSizeGlyphs" ; sources: -1 on error
+  "TTF_GetFontKerningSizeGlyphs32"
+  "TTF_SetFontSizeDPI"
+  "TTF_SetFontSize"
+  "TTF_SetFontScriptName"
+  "TTF_SetFontDirection"
+  "TTF_SetScript" ; -1 if SDL_ttf is not compiled with HarfBuzz support.
+  "TTF_SetDirection" ; -1 if SDL_ttf is not compiled with HarfBuzz support.
+  "TTF_MeasureText"
+  "TTF_MeasureUTF8"
+  "TTF_MeasureUNICODE"
+  "TTF_GetFontWrappedAlign" ; checked with sources
+  "TTF_SetFontSDF" ; checked with sources
+  "TTF_GetFontSDF" ; checked with sources
   )
 
 ;; ** ttf / null is error
@@ -726,8 +832,8 @@
 (defl *return-null-on-failure/ttf*
   "TTF_OpenFont"
   "TTF_OpenFontRW"
-  "TTF_OpenFontIndex" 
-  "TTF_OpenFontIndexRW"
+  "TTF_OpenFontDPI"
+  "TTF_OpenFontDPIRW"
   "TTF_RenderGlyph_Blended"
   "TTF_RenderUNICODE_Blended_Wrapped"
   "TTF_RenderUTF8_Blended_Wrapped"
@@ -742,7 +848,29 @@
   "TTF_RenderGlyph_Solid"
   "TTF_RenderUNICODE_Solid"
   "TTF_RenderUTF8_Solid"
-  "TTF_RenderText_Solid")
+  "TTF_RenderText_Solid"
+  "TTF_RenderGlyph32_LCD"
+  "TTF_RenderGlyph_LCD"
+  "TTF_RenderUNICODE_LCD_Wrapped"
+  "TTF_RenderUTF8_LCD_Wrapped"
+  "TTF_RenderText_LCD_Wrapped"
+  "TTF_RenderUNICODE_LCD"
+  "TTF_RenderUTF8_LCD"
+  "TTF_RenderText_LCD"
+  "TTF_RenderGlyph32_Blended"
+  "TTF_RenderGlyph32_Shaded"
+  "TTF_RenderUNICODE_Shaded_Wrapped"
+  "TTF_RenderUTF8_Shaded_Wrapped"
+  "TTF_RenderText_Shaded_Wrapped"
+  "TTF_RenderGlyph32_Solid"
+  "TTF_RenderUNICODE_Solid_Wrapped"
+  "TTF_RenderUTF8_Solid_Wrapped"
+  "TTF_RenderText_Solid_Wrapped"
+  "TTF_OpenFontIndex"
+  "TTF_OpenFontIndexDPI"
+  "TTF_OpenFontIndexDPIRW"
+  "TTF_OpenFontIndexRW"
+  )
 
 ;; ** ttf / void
 
@@ -754,6 +882,7 @@
   "TTF_SetFontOutline"
   "TTF_SetFontStyle"
   "TTF_GetFontKerningSize" ; deprecated, not exporting it, as it can yield wrong results
+  "TTF_SetFontWrappedAlign"
   "TTF_ByteSwappedUNICODE")
 
 ;; ** ttf / bool-like ints, 0 for false
@@ -766,6 +895,7 @@
 
 (defl *return-0-on-failure/ttf*
   "TTF_GlyphIsProvided" ; "0 for an undefined character code", not a bool-like, returns an index
+  "TTF_GlyphIsProvided32"
   )
 
 ;; ** ttf / constant on failure
@@ -790,6 +920,8 @@
   "TTF_GetFontKerning" ; "0 if kerning is disabled" I guess a 0 could be useful in calculations as is, so no error? bool-like?
   "TTF_FontFaceStyleName" ; The current style name of the face of the font, or NULL perhaps.
   "TTF_FontFaceFamilyName" ; like TTF_FontFaceStyleName
+  "TTF_GetHarfBuzzVersion"
+  "TTF_GetFreeTypeVersion"
   )
 
 ;; * SDL GFX
@@ -955,7 +1087,16 @@
   "IMG_LoadXCF_RW"
   "IMG_LoadXPM_RW"
   "IMG_LoadXV_RW"
+  "IMG_LoadGIFAnimation_RW"
+  "IMG_LoadAnimationTyped_RW"
+  "IMG_LoadAnimation_RW"
+  "IMG_LoadAnimation"
+  "IMG_LoadSizedSVG_RW"
+  "IMG_LoadQOI_RW"
+  "IMG_LoadJXL_RW"
+  "IMG_LoadAVIF_RW"
   "IMG_ReadXPMFromArray"
+  "IMG_ReadXPMFromArrayToRGB888"
   "IMG_LoadSVG_RW" ; looked up in the sources
   ;; these weren't in the docs, assuming the same:
   "IMG_LoadWEBP_RW"
@@ -968,6 +1109,9 @@
 ;; bool-like ints, 0 for false, 1 for true, no errors
 (defl *return-bool-like-0-for-false/image*
   "IMG_isSVG"
+  "IMG_isQOI"
+  "IMG_isJXL"
+  "IMG_isAVIF"
   "IMG_isBMP"
   "IMG_isCUR"
   "IMG_isGIF"
@@ -986,6 +1130,7 @@
 ;; ** image / void
 
 (defl *return-void/image*
+  "IMG_FreeAnimation"
   "IMG_Quit")
 
 ;; ** image / skip

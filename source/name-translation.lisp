@@ -16,6 +16,8 @@
   ;; order matters, e.g. RGBA needs to run before RGB, so just sort by length
   (sort (list "SDL2" "SDL" "IMG" "TTF" "GFX"
               "TLS" "CAS" "CVT"
+              "LCD" "SDF"
+              "AVIF" "QOI" "JXL"
               "UNICODE" "UTF8"
               "PRI"
               "(x|X|u)(8|16|32|64).?"
@@ -31,6 +33,9 @@
               "WAV"
               "DUMMY" "ANON" "UNION" "STRUCT" "ENUM"
               "OS" "FILE"
+              "LSX" "LASX"
+              "NV" "SF" "ICC" "FRect"
+              "VSync"
               "ICO" "CUR" "BMP" "GIF" "JPG" "LBM" "PCX" "PNG" "PNM" "TIF"
               "XPM" "XCF" "XV" "WEBP" "TGA" "SVG")
         #'>
@@ -70,7 +75,7 @@
 (defun catch-questionable-names (name)
   (when (and (cl-ppcre:scan "-.-" name)
              (not (cl-ppcre:scan "--U-(QUAD|LONG|INT|SHORT|CHAR)(-T)?" name))
-             (not (member name '("+HAVE-M-PI+" "--F-RECT")
+             (not (member name '("+HAVE-M-PI+" "--F-RECT" "+HAVE-O-CLOEXEC+")
                           :test #'equal)))
     (push name *questionable-names*))
   name)

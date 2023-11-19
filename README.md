@@ -34,10 +34,10 @@ don't think this to be a big deal, though.
         hu.dwim.sdl/image:+image-patchlevel+)
 -->
 
-- SDL 2.0.14
-- TTF 2.0.15
+- SDL 2.28.3
+- TTF 2.20.2
 - GFX 1.0.4
-- Image 2.0.5
+- Image 2.6.3
 
 (note that you can generate the specs yourself if you want to)
 
@@ -176,16 +176,16 @@ those functions have unknown abbreviations, you will be told about that as well.
 wiki is unclear on these:
 - `SDL_AudioStreamFlush` : int, no mention of error
 - `SDL_GetAudioDeviceStatus` : wiki shows gibberish
-- `SDL_SIMDGetAlignment` : size_t, but wiki has no error info
-- `SDL_DuplicateSurface` : no page on wiki
 - `SDL_JoystickGetType` : no error info on wiki
+- `SDL_GameControllerGetTouchpadFinger`: int, but wiki gives no info on return value
 
 TODO these return structs that sometimes indicate an error condition:
 - `SDL_GameControllerGetBindForButton` : returns a struct, but wiki assumes enum
 - `SDL_GameControllerGetBindForAxis` : returns a struct, but wiki assumes enum
-- `SDL_JoystickGetGUID`
-- `SDL_JoystickGetDeviceGUID`
- 
+- `SDL_JoystickGetGUID`: a 0-GUID is returned, not checking for it now
+- `SDL_JoystickGetDeviceGUID` : a 0-GUID is returned, not checking for it now
+- `SDL_GetPrimarySelectionText` : returns empty string on failure (error)
+
 ### Convenience macros and functions
 
 #### `<function-name>*`: Convenience functions for passed return values
@@ -354,8 +354,47 @@ The following example opens a window and shows a rectangle for two seconds:
         (sdl:render-present renderer)
         (sdl:delay 16))))
   (sdl:quit))
+
 ```
 
+
+### Example 2
+ 
+The following example opens a window and shows a rectangle for two seconds, but
+uses `cffi:with-foreign-array`, `cffi::foreign-array-type` and
+`gfx:aapolygon-rgba`. `gfx:aapolygon-rgba` wants CFFI arrays for arguments.
+
+(TODO perhaps there's a simpler way to accomplish, some function in CFFI?)
+
+```
+(progn
+  (sdl:init sdl:+init-video+)
+  (sdl:with-window window ("another square"
+                           sdl:+windowpos-undefined+ sdl:+windowpos-undefined+
+                           0 0
+                           (logior sdl:+window-resizable+ sdl:+window-fullscreen-desktop+))
+    (sdl:with-renderer renderer (window -1 sdl:+renderer-accelerated+)
+      (dotimes (time 120)
+        ;; clear
+        (sdl:set-render-draw-color renderer 255 255 255 255)
+        (sdl:render-clear renderer)
+        (let ((type (make-instance 'cffi::foreign-array-type :element-type :int16 :dimensions '(4))))
+          (cffi:with-foreign-array (a (make-array '(4) :initial-contents
+                                                  '(0 100 100 0) :element-type '(signed-byte 16))
+                                      type)
+            (cffi:with-foreign-array (b (make-array '(4) :initial-contents
+                                                    '(0 0 100 100) :element-type '(signed-byte 16))
+                                        type)
+              (gfx:aapolygon-rgba renderer
+                                  a b
+                                  4
+                                  0 0 0 255))))
+        ;; show
+        (sdl:render-present renderer)
+        (sdl:delay 16))))
+  (sdl:quit))
+ ```
+ 
 ### Status
 
 **API is not frozen.**
